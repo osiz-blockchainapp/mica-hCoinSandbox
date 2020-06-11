@@ -123,7 +123,7 @@ let () =
     (function Bad_preserved_levels parameter -> Some parameter | _ -> None)
     (fun parameter -> Bad_preserved_levels parameter)
 
-let tez_sym = "\xEA\x9C\xA9"
+let tez_sym = "Mi"
 
 let string_parameter = parameter (fun _ x -> return x)
 

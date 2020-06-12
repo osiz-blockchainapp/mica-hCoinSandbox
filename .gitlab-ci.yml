@@ -1,0 +1,1049 @@
+variables:
+  ## Please update `scripts/version.sh` accordingly
+  build_deps_image_version: f42f3d8042d5ad53605fc4907b19140c01bc678b
+  build_deps_image_name: registry.gitlab.com/tezos/opam-repository
+  public_docker_image_name: docker.io/${CI_PROJECT_PATH}
+  GIT_STRATEGY: fetch
+  GIT_DEPTH: 1
+  GET_SOURCES_ATTEMPTS: 2
+  ARTIFACT_DOWNLOAD_ATTEMPTS: 2
+
+stages:
+  - doc
+  - build
+  - test
+  - packaging
+  - publish
+
+############################################################
+## Stage: build (only MR)                                 ##
+############################################################
+
+.build_template: &build_definition
+  image: ${build_deps_image_name}:${build_deps_image_version}
+  stage: build
+  except:
+    - master
+    - alphanet
+    - zeronet
+    - mainnet
+    - alphanet-staging
+    - zeronet-staging
+    - mainnet-staging
+    - zeronet-snapshots
+    - mainnet-snapshots
+  before_script:
+    - . ./scripts/version.sh
+  tags:
+    - gitlab-org
+
+check_opam_deps:
+  <<: *build_definition
+  script:
+    - if [ "${build_deps_image_version}" != "${opam_repository_tag}" ] ; then
+        echo "Inconsistent dependencies hash between 'scripts/version.sh' and '.gitlab-ci.yml'." ;
+        echo "${build_deps_image_version} != ${opam_repository_tag}" ;
+        exit 1 ;
+      fi
+    - ./scripts/opam-check.sh
+    - ./scripts/check_opam_test.sh
+
+check_opam_lint:
+  <<: *build_definition
+  script:
+    - find . ! -path "./_opam/*" -name "*.opam" -exec opam lint {} +;
+
+check_linting:
+  <<: *build_definition
+  script:
+    - src/tooling/lint.sh check.ci
+
+build:
+  <<: *build_definition
+  script:
+    - . ./scripts/version.sh
+    - dune build @runtest_dune_template
+    - make all build-test
+    - opam clean
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME"
+    paths:
+      - _build
+    expire_in: 1 day
+  tags:
+    - gitlab-org
+
+############################################################
+## Stage: test (only MR)                                  ##
+############################################################
+
+.test_template: &test_definition
+  <<: *build_definition
+  stage: test
+  dependencies:
+    - build
+  retry: 2
+
+unit:stdlib:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_stdlib/runtest
+
+unit:stdlib_unix:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_stdlib_unix/runtest
+
+unit:data_encoding:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_data_encoding/runtest
+
+unit:storage:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_storage/runtest
+
+unit:crypto:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_crypto/runtest
+
+unit:shell:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_shell/runtest
+
+unit:p2p:io-scheduler:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_p2p/runtest_p2p_io_scheduler_ipv4
+
+unit:p2p:socket:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_p2p/runtest_p2p_socket_ipv4
+
+unit:p2p:pool:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_p2p/runtest_p2p_pool_ipv4
+
+unit:proto_004_Pt24m4xi:lib_protocol:
+  <<: *test_definition
+  script:
+    - dune build @src/proto_004_Pt24m4xi/lib_protocol/runtest
+
+unit:proto_004_Pt24m4xi:lib_client:
+  <<: *test_definition
+  script:
+    - dune build @src/proto_004_Pt24m4xi/lib_client/test/runtest
+
+unit:p2p:peerset:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_p2p/runtest_p2p_peerset
+
+unit:p2p:ipv6set:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_p2p/runtest_p2p_ipv6set
+
+unit:p2p:banned_peers:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_p2p/runtest_p2p_banned_peers
+
+unit:validation:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_validation/runtest
+
+unit:micheline:
+  <<: *test_definition
+  script:
+    - dune build @src/lib_micheline/runtest
+
+############################################################
+## Stage: run shell integration tests                     ##
+############################################################
+
+# definition for the environment to run all integration tests
+.integration_template: &integration_definition
+  <<: *test_definition
+  dependencies:
+    - build
+  before_script:
+    - make
+  tags:
+    - gitlab-org
+
+integration:basic.sh:
+  <<: *integration_definition
+  script:
+    - dune build @src/bin_client/runtest_basic.sh
+
+integration:contracts.sh:
+  <<: *integration_definition
+  script:
+    - dune build @src/bin_client/runtest_contracts.sh
+
+integration:contracts_opcode.sh:
+  <<: *integration_definition
+  script:
+    - dune build @src/bin_client/runtest_contracts_opcode.sh
+
+integration:contracts_macros.sh:
+  <<: *integration_definition
+  script:
+    - dune build @src/bin_client/runtest_contracts_macros.sh
+
+integration:contracts_mini_scenarios.sh:
+  <<: *integration_definition
+  script:
+    - dune build @src/bin_client/runtest_contracts_mini_scenarios.sh
+
+integration:multinode.sh:
+  <<: *integration_definition
+  script:
+    - dune build @src/bin_client/runtest_multinode.sh
+
+integration:inject.sh:
+  <<: *integration_definition
+  script:
+    - dune build @src/bin_client/runtest_injection.sh
+
+integration:voting.sh:
+  <<: *integration_definition
+  script:
+    - dune build @src/bin_client/runtest_voting.sh
+
+integration:proto:sandbox:
+  <<: *integration_definition
+  script:
+    - dune build @runtest_sandbox
+
+############################################################
+## Stage: run OCaml integration tests                     ##
+############################################################
+
+integration:sandboxes:voting:
+  <<: *integration_definition
+  script:
+    - ROOT_PATH=$PWD/flextesa-voting-demo-noops dune build @src/bin_sandbox/runtest_sandbox_voting_demo_noops
+  artifacts:
+    paths:
+    - flextesa-voting-demo-noops
+    expire_in: 1 day
+    when: on_failure
+  allow_failure: true # This test uses too much resources for GitLab's workers
+
+integration:sandboxes:acc-baking:
+  <<: *integration_definition
+  script:
+    - ROOT_PATH=$PWD/flextesa-acc-sdb dune build @src/bin_sandbox/runtest_sandbox_accusations_simple_double_baking
+  artifacts:
+    paths:
+    - flextesa-acc-sdb
+    expire_in: 1 day
+    when: on_failure
+
+integration:sandboxes:acc-endorsement:
+  <<: *integration_definition
+  script:
+    - ROOT_PATH=$PWD/flextesa-acc-sde dune build @src/bin_sandbox/runtest_sandbox_accusations_simple_double_endorsing
+  artifacts:
+    paths:
+    - flextesa-acc-sde
+    expire_in: 1 day
+    when: on_failure
+
+############################################################
+## Stage: run python integration tests                    ##
+############################################################
+
+##BEGIN_INTEGRATION_PYTHON##
+integration:baker_endorser:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_baker_endorser.py
+  stage: test
+
+integration:basic:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_basic.py
+  stage: test
+
+integration:contract:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_contract.py
+  stage: test
+
+integration:contract_baker:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_contract_baker.py
+  stage: test
+
+integration:cors:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_cors.py
+  stage: test
+
+integration:double_endorsement:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_double_endorsement.py
+  stage: test
+
+integration:fork:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_fork.py
+  stage: test
+
+integration:injection:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_injection.py
+  stage: test
+
+integration:many_bakers:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_many_bakers.py
+  stage: test
+
+integration:many_nodes:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_many_nodes.py
+  stage: test
+
+integration:mempool:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_mempool.py
+  stage: test
+
+integration:multinode:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_multinode.py
+  stage: test
+
+integration:multinode_snapshot:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_multinode_snapshot.py
+  stage: test
+
+integration:multinode_storage_reconstruction:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_multinode_storage_reconstruction.py
+  stage: test
+
+integration:proto_demo_noops_manual_bake:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_proto_demo_noops_manual_bake.py
+  stage: test
+
+integration:rpc:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_rpc.py
+  stage: test
+
+integration:tls:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_tls.py
+  stage: test
+
+integration:voting:
+  <<: *integration_definition
+  script:
+    - pytest tests_python/tests/test_voting.py
+  stage: test
+
+
+##END_INTEGRATION_PYTHON##
+
+############################################################
+## Stage: run doc integration tests                       ##
+############################################################
+
+documentation:build:
+  <<: *test_definition
+  script:
+    - make doc-html
+
+documentation:linkcheck:
+  <<: *test_definition
+  script:
+    - make doc-html-and-linkcheck
+  allow_failure: true
+
+############################################################
+## Stage: building opam packages (only master and *opam*) ##
+############################################################
+
+.opam_template: &opam_definition
+  image: ${build_deps_image_name}:opam--${build_deps_image_version}
+  stage: packaging
+  dependencies: []
+  only:
+    - master
+    - /^.*opam.*$/
+  script:
+    - ./scripts/opam-pin.sh
+    - opam depext --yes ${package}
+    - opam install --yes ${package}
+    - opam reinstall --yes --with-test ${package}
+  tags:
+    - gitlab-org
+
+##BEGIN_OPAM##
+opam:000:ocplib-json-typed:
+  <<: *opam_definition
+  variables:
+    package: ocplib-json-typed
+
+opam:001:ocplib-json-typed-bson:
+  <<: *opam_definition
+  variables:
+    package: ocplib-json-typed-bson
+
+opam:002:tezos-data-encoding:
+  <<: *opam_definition
+  variables:
+    package: tezos-data-encoding
+
+opam:003:tezos-stdlib:
+  <<: *opam_definition
+  variables:
+    package: tezos-stdlib
+
+opam:004:ocplib-resto:
+  <<: *opam_definition
+  variables:
+    package: ocplib-resto
+
+opam:005:tezos-error-monad:
+  <<: *opam_definition
+  variables:
+    package: tezos-error-monad
+
+opam:006:ocplib-resto-directory:
+  <<: *opam_definition
+  variables:
+    package: ocplib-resto-directory
+
+opam:007:tezos-event-logging:
+  <<: *opam_definition
+  variables:
+    package: tezos-event-logging
+
+opam:008:tezos-rpc:
+  <<: *opam_definition
+  variables:
+    package: tezos-rpc
+
+opam:009:tezos-stdlib-unix:
+  <<: *opam_definition
+  variables:
+    package: tezos-stdlib-unix
+
+opam:010:blake2:
+  <<: *opam_definition
+  variables:
+    package: blake2
+
+opam:011:hacl:
+  <<: *opam_definition
+  variables:
+    package: hacl
+
+opam:012:secp256k1:
+  <<: *opam_definition
+  variables:
+    package: secp256k1
+
+opam:013:tezos-clic:
+  <<: *opam_definition
+  variables:
+    package: tezos-clic
+
+opam:014:uecc:
+  <<: *opam_definition
+  variables:
+    package: uecc
+
+opam:015:tezos-crypto:
+  <<: *opam_definition
+  variables:
+    package: tezos-crypto
+
+opam:016:tezos-micheline:
+  <<: *opam_definition
+  variables:
+    package: tezos-micheline
+
+opam:017:index:
+  <<: *opam_definition
+  variables:
+    package: index
+
+opam:018:irmin:
+  <<: *opam_definition
+  variables:
+    package: irmin
+
+opam:019:tezos-base:
+  <<: *opam_definition
+  variables:
+    package: tezos-base
+
+opam:020:ocplib-resto-cohttp:
+  <<: *opam_definition
+  variables:
+    package: ocplib-resto-cohttp
+
+opam:021:pbkdf:
+  <<: *opam_definition
+  variables:
+    package: pbkdf
+
+opam:022:irmin-pack:
+  <<: *opam_definition
+  variables:
+    package: irmin-pack
+
+opam:023:lmdb:
+  <<: *opam_definition
+  variables:
+    package: lmdb
+
+opam:024:tezos-shell-services:
+  <<: *opam_definition
+  variables:
+    package: tezos-shell-services
+
+opam:025:ocplib-resto-cohttp-client:
+  <<: *opam_definition
+  variables:
+    package: ocplib-resto-cohttp-client
+
+opam:026:tezos-rpc-http:
+  <<: *opam_definition
+  variables:
+    package: tezos-rpc-http
+
+opam:027:bip39:
+  <<: *opam_definition
+  variables:
+    package: bip39
+
+opam:028:tezos-storage:
+  <<: *opam_definition
+  variables:
+    package: tezos-storage
+
+opam:029:ledgerwallet:
+  <<: *opam_definition
+  variables:
+    package: ledgerwallet
+
+opam:030:tezos-rpc-http-client:
+  <<: *opam_definition
+  variables:
+    package: tezos-rpc-http-client
+
+opam:031:tezos-client-base:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-base
+
+opam:032:ledgerwallet-tezos:
+  <<: *opam_definition
+  variables:
+    package: ledgerwallet-tezos
+
+opam:033:tezos-rpc-http-client-unix:
+  <<: *opam_definition
+  variables:
+    package: tezos-rpc-http-client-unix
+
+opam:034:tezos-signer-services:
+  <<: *opam_definition
+  variables:
+    package: tezos-signer-services
+
+opam:035:tezos-protocol-environment-sigs:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-environment-sigs
+
+opam:036:tezos-p2p:
+  <<: *opam_definition
+  variables:
+    package: tezos-p2p
+
+opam:037:tezos-signer-backends:
+  <<: *opam_definition
+  variables:
+    package: tezos-signer-backends
+
+opam:038:tezos-protocol-environment:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-environment
+
+opam:039:tezos-client-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-commands
+
+opam:040:tezos-protocol-compiler:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-compiler
+
+opam:041:tezos-shell-context:
+  <<: *opam_definition
+  variables:
+    package: tezos-shell-context
+
+opam:042:tezos-client-base-unix:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-base-unix
+
+opam:043:tezos-protocol-005-PsBabyM1:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-005-PsBabyM1
+
+opam:044:tezos-protocol-006-PsCARTHA:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-006-PsCARTHA
+
+opam:045:tezos-protocol-004-Pt24m4xi:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-004-Pt24m4xi
+
+opam:046:tezos-protocol-updater:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-updater
+
+opam:047:tezos-client-005-PsBabyM1:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-005-PsBabyM1
+
+opam:048:tezos-version:
+  <<: *opam_definition
+  variables:
+    package: tezos-version
+
+opam:049:tezos-client-006-PsCARTHA:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-006-PsCARTHA
+
+opam:050:tezos-protocol-001-PtCJ7pwo:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-001-PtCJ7pwo
+
+opam:051:tezos-protocol-002-PsYLVpVv:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-002-PsYLVpVv
+
+opam:052:tezos-protocol-003-PsddFKi3:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-003-PsddFKi3
+
+opam:053:tezos-client-004-Pt24m4xi:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-004-Pt24m4xi
+
+opam:054:tezos-validation:
+  <<: *opam_definition
+  variables:
+    package: tezos-validation
+
+opam:055:tezos-baking-005-PsBabyM1:
+  <<: *opam_definition
+  variables:
+    package: tezos-baking-005-PsBabyM1
+
+opam:056:tezos-baking-006-PsCARTHA:
+  <<: *opam_definition
+  variables:
+    package: tezos-baking-006-PsCARTHA
+
+opam:057:tezos-protocol-000-Ps9mPmXa:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-000-Ps9mPmXa
+
+opam:058:tezos-client-001-PtCJ7pwo:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-001-PtCJ7pwo
+
+opam:059:tezos-client-002-PsYLVpVv:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-002-PsYLVpVv
+
+opam:060:tezos-client-003-PsddFKi3:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-003-PsddFKi3
+
+opam:061:ocplib-resto-json:
+  <<: *opam_definition
+  variables:
+    package: ocplib-resto-json
+
+opam:062:ocplib-resto-cohttp-server:
+  <<: *opam_definition
+  variables:
+    package: ocplib-resto-cohttp-server
+
+opam:063:tezos-protocol-005-PsBABY5H:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-005-PsBABY5H
+
+opam:064:tezos-protocol-demo-noops:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-demo-noops
+
+opam:065:tezos-embedded-protocol-005-PsBabyM1:
+  <<: *opam_definition
+  variables:
+    package: tezos-embedded-protocol-005-PsBabyM1
+
+opam:066:tezos-shell:
+  <<: *opam_definition
+  variables:
+    package: tezos-shell
+
+opam:067:tezos-embedded-protocol-006-PsCARTHA:
+  <<: *opam_definition
+  variables:
+    package: tezos-embedded-protocol-006-PsCARTHA
+
+opam:068:tezos-baking-005-PsBabyM1-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-baking-005-PsBabyM1-commands
+
+opam:069:tezos-baking-006-PsCARTHA-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-baking-006-PsCARTHA-commands
+
+opam:070:tezos-client-000-Ps9mPmXa:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-000-Ps9mPmXa
+
+opam:071:tezos-client-001-PtCJ7pwo-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-001-PtCJ7pwo-commands
+
+opam:072:tezos-client-002-PsYLVpVv-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-002-PsYLVpVv-commands
+
+opam:073:tezos-client-003-PsddFKi3-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-003-PsddFKi3-commands
+
+opam:074:tezos-client-004-Pt24m4xi-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-004-Pt24m4xi-commands
+
+opam:075:tezos-client-005-PsBabyM1-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-005-PsBabyM1-commands
+
+opam:076:tezos-client-006-PsCARTHA-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-client-006-PsCARTHA-commands
+
+opam:077:ocplib-ezresto:
+  <<: *opam_definition
+  variables:
+    package: ocplib-ezresto
+
+opam:078:tezos-embedded-protocol-004-Pt24m4xi:
+  <<: *opam_definition
+  variables:
+    package: tezos-embedded-protocol-004-Pt24m4xi
+
+opam:079:tezos-protocol-006-PsCARTHA-parameters:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-006-PsCARTHA-parameters
+
+opam:080:tezos-rpc-http-server:
+  <<: *opam_definition
+  variables:
+    package: tezos-rpc-http-server
+
+opam:081:tezos-embedded-protocol-000-Ps9mPmXa:
+  <<: *opam_definition
+  variables:
+    package: tezos-embedded-protocol-000-Ps9mPmXa
+
+opam:082:tezos-embedded-protocol-001-PtCJ7pwo:
+  <<: *opam_definition
+  variables:
+    package: tezos-embedded-protocol-001-PtCJ7pwo
+
+opam:083:tezos-embedded-protocol-002-PsYLVpVv:
+  <<: *opam_definition
+  variables:
+    package: tezos-embedded-protocol-002-PsYLVpVv
+
+opam:084:tezos-embedded-protocol-003-PsddFKi3:
+  <<: *opam_definition
+  variables:
+    package: tezos-embedded-protocol-003-PsddFKi3
+
+opam:085:tezos-embedded-protocol-005-PsBABY5H:
+  <<: *opam_definition
+  variables:
+    package: tezos-embedded-protocol-005-PsBABY5H
+
+opam:086:tezos-embedded-protocol-demo-noops:
+  <<: *opam_definition
+  variables:
+    package: tezos-embedded-protocol-demo-noops
+
+opam:087:tezos-mempool-005-PsBabyM1:
+  <<: *opam_definition
+  variables:
+    package: tezos-mempool-005-PsBabyM1
+
+opam:088:tezos-mempool-006-PsCARTHA:
+  <<: *opam_definition
+  variables:
+    package: tezos-mempool-006-PsCARTHA
+
+opam:089:tezos-validator:
+  <<: *opam_definition
+  variables:
+    package: tezos-validator
+
+opam:090:tezos-protocol-005-PsBabyM1-parameters:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-005-PsBabyM1-parameters
+
+opam:091:tezos-client:
+  <<: *opam_definition
+  variables:
+    package: tezos-client
+
+opam:092:tezos-accuser-005-PsBabyM1-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-accuser-005-PsBabyM1-commands
+
+opam:093:ocplib-ezresto-directory:
+  <<: *opam_definition
+  variables:
+    package: ocplib-ezresto-directory
+
+opam:094:tezos-endorser-005-PsBabyM1-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-endorser-005-PsBabyM1-commands
+
+opam:095:tezos-codec:
+  <<: *opam_definition
+  variables:
+    package: tezos-codec
+
+opam:096:ocplib-json-typed-browser:
+  <<: *opam_definition
+  variables:
+    package: ocplib-json-typed-browser
+
+opam:097:tezos-tooling:
+  <<: *opam_definition
+  variables:
+    package: tezos-tooling
+
+opam:098:flextesa:
+  <<: *opam_definition
+  variables:
+    package: flextesa
+
+opam:099:tezos-endorser-005-PsBabyM1:
+  <<: *opam_definition
+  variables:
+    package: tezos-endorser-005-PsBabyM1
+
+opam:100:tezos-endorser-006-PsCARTHA:
+  <<: *opam_definition
+  variables:
+    package: tezos-endorser-006-PsCARTHA
+
+opam:101:tezos-006-PsCARTHA-test-helpers:
+  <<: *opam_definition
+  variables:
+    package: tezos-006-PsCARTHA-test-helpers
+
+opam:102:tezos-baker-006-PsCARTHA:
+  <<: *opam_definition
+  variables:
+    package: tezos-baker-006-PsCARTHA
+
+opam:103:tezos-accuser-006-PsCARTHA-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-accuser-006-PsCARTHA-commands
+
+opam:104:tezos-signer:
+  <<: *opam_definition
+  variables:
+    package: tezos-signer
+
+opam:105:tezos-baker-005-PsBabyM1:
+  <<: *opam_definition
+  variables:
+    package: tezos-baker-005-PsBabyM1
+
+opam:106:tezos-protocol-006-PsCARTHA-tests:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-006-PsCARTHA-tests
+
+opam:107:tezos-accuser-006-PsCARTHA:
+  <<: *opam_definition
+  variables:
+    package: tezos-accuser-006-PsCARTHA
+
+opam:108:tezos-protocol-005-PsBabyM1-tests:
+  <<: *opam_definition
+  variables:
+    package: tezos-protocol-005-PsBabyM1-tests
+
+opam:109:tezos-endorser-006-PsCARTHA-commands:
+  <<: *opam_definition
+  variables:
+    package: tezos-endorser-006-PsCARTHA-commands
+
+opam:110:tezos-accuser-005-PsBabyM1:
+  <<: *opam_definition
+  variables:
+    package: tezos-accuser-005-PsBabyM1
+
+opam:111:tezos-node:
+  <<: *opam_definition
+  variables:
+    package: tezos-node
+
+opam:112:tezos-005-PsBabyM1-test-helpers:
+  <<: *opam_definition
+  variables:
+    package: tezos-005-PsBabyM1-test-helpers
+
+
+##END_OPAM##
+
+
+
+############################################################
+## Stage: publish                                         ##
+############################################################
+
+publish:docker:
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+  stage: publish
+  only:
+    - master@tezos/tezos
+    - alphanet@tezos/tezos
+    - zeronet@tezos/tezos
+    - mainnet@tezos/tezos
+    - alphanet-staging@tezos/tezos
+    - zeronet-staging@tezos/tezos
+    - mainnet-staging@tezos/tezos
+    - zeronet-snapshots@tezos/tezos
+    - mainnet-snapshots@tezos/tezos
+  before_script:
+    - apk add git binutils
+    - mkdir ~/.docker || true
+    - echo "${CI_DOCKER_AUTH}" > ~/.docker/config.json
+  script:
+    - LAST_COMMIT_DATE_TIME=$(git log --pretty=format:"%cd" -1 --date="format:%Y%m%d%H%M%S" 2>&1)
+    - ./scripts/create_docker_image.sh
+        "${public_docker_image_name}"
+        "${CI_COMMIT_REF_NAME}"
+        "${build_deps_image_name}"
+        "${build_deps_image_version}"
+    - docker push "${public_docker_image_name}:${CI_COMMIT_REF_NAME}"
+    - docker push "${public_docker_image_name}-bare:${CI_COMMIT_REF_NAME}"
+    - docker push "${public_docker_image_name}-debug:${CI_COMMIT_REF_NAME}"
+    - docker tag
+      "${public_docker_image_name}:${CI_COMMIT_REF_NAME}"
+      "${public_docker_image_name}:${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHORT_SHA}_${LAST_COMMIT_DATE_TIME}"
+    - docker push "${public_docker_image_name}:${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHORT_SHA}_${LAST_COMMIT_DATE_TIME}"
+  tags:
+    - safe_docker
+
+publish:doc:
+  image: ${build_deps_image_name}:${build_deps_image_version}
+  stage: doc
+  only:
+    - master@tezos/tezos
+  before_script:
+    - sudo apk add --no-cache openssh-client rsync
+    - echo "${CI_PK_GITLAB_DOC}" > ~/.ssh/id_ed25519
+    - echo "${CI_KH}" > ~/.ssh/known_hosts
+    - chmod 400 ~/.ssh/id_ed25519
+  script:
+    - make doc-html
+    - git clone git@gitlab.com:${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAMESPACE}.gitlab.io gitlab.io
+    - rsync --recursive --links --perms --delete --verbose
+        --exclude=.doctrees
+        docs/_build/ gitlab.io/public/
+    - cd gitlab.io
+    - if [ -z "$(git status -s)" ] ; then
+        echo "Nothing to commit!" ;
+      else
+        git add public/"${CI_COMMIT_REF_NAME}" ;
+        git commit -m "Import doc for ${CI_COMMIT_REF_NAME} (${CI_COMMIT_SHA})" ;
+        git push origin master ;
+      fi
+  tags:
+    - gitlab-org

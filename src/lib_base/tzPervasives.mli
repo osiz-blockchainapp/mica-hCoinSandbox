@@ -27,8 +27,8 @@ include module type of struct
   include Tezos_stdlib
 end
 
-module Error_monad : module type of struct
-  include Tezos_error_monad.Error_monad
+include module type of struct
+  include Tezos_error_monad
 end
 
 include module type of struct
@@ -89,7 +89,7 @@ include module type of struct
 end
 
 include module type of struct
-  include Tezos_error_monad.Error_monad
+  include Error_monad
 end
 
 module Internal_event = Internal_event

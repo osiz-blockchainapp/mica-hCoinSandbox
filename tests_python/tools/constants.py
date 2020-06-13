@@ -34,8 +34,8 @@ PARAMETERS = {
     "blocks_per_voting_period": 64,
     "time_between_blocks": ["1", "0"],
     "endorsers_per_block": 32,
-    "hard_gas_limit_per_operation": "1040000",
-    "hard_gas_limit_per_block": "10400000",
+    "hard_gas_limit_per_operation": "800000",
+    "hard_gas_limit_per_block": "8000000",
     "proof_of_work_threshold": "-1",
     "tokens_per_roll": "8000000000",
     "michelson_maximum_type_size": 1000,
@@ -43,8 +43,8 @@ PARAMETERS = {
     "origination_size": 257,
     "block_security_deposit": "512000000",
     "endorsement_security_deposit": "64000000",
-    "baking_reward_per_endorsement": ["1250000", "187500"],
-    "endorsement_reward": ["1250000", "833333"],
+    "block_reward": "16000000",
+    "endorsement_reward": "2000000",
     "cost_per_byte": "1000",
     "hard_storage_limit_per_operation": "60000",
     "test_chain_duration": "1966080",
@@ -105,8 +105,8 @@ IDENTITIES_SHORT = {
 }
 
 
-ALPHA = "PsCARTHAGazKbHtnKfLzQg3kms52kSRpgnDY982a9oYsSXRLQEb"
-ALPHA_DEAMON = "006-PsCARTHA"  # tezos-baker-006-PsCARTHA
+ALPHA = "PsBabyM1eUXZseaJdmXFApDSBqj8YBfwELoxZHHW77EMcAbbwAS"
+ALPHA_DEAMON = "005-PsBabyM1"  # tezos-baker-alpha
 
 
 TEZOS_CRT = """

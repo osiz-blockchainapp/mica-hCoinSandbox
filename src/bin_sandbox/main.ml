@@ -80,7 +80,9 @@ let () =
         Format.fprintf fmt "%a" Test_scenario.Inconsistency_error.pp e
     | #Process_result.Error.t as e ->
         Format.fprintf fmt "%a" Process_result.Error.pp e
-    | #System_error.t as e ->
+    | `Lwt_exn _ as e ->
+        Format.fprintf fmt "%a" Lwt_exception.pp e
+    | `Sys_error _ as e ->
         Format.fprintf fmt "%a" System_error.pp e
     | `Client_command_error _ as e ->
         Tezos_client.Command_error.pp fmt e
@@ -90,17 +92,15 @@ let () =
         Format.fprintf fmt "WAITING-FOR “%s”: Time-out" msg
     | `Precheck_failure _ as p ->
         Helpers.System_dependencies.Error.pp fmt p
-    | `Die _ ->
-        ()
   in
   Term.exit
   @@ Term.eval_choice
        (help : unit Term.t * _)
        ( Small_utilities.all ~pp_error ()
-       @ [ Command_daemons_protocol_change.cmd () ~pp_error;
+       @ [ Command_mini_network.cmd () ~pp_error;
+           Command_daemons_protocol_change.cmd () ~pp_error;
            Command_voting.cmd () ~pp_error;
            Command_accusations.cmd () ~pp_error;
            Command_prevalidation.cmd () ~pp_error;
            Command_ledger_baking.cmd () ~pp_error;
-           Command_ledger_wallet.cmd () ~pp_error;
-           Flextesa.Interactive_mini_network.cmd ~pp_error () ] )
+           Command_ledger_wallet.cmd () ~pp_error ] )

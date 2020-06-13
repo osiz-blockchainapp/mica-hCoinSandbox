@@ -56,7 +56,7 @@ let bytes_parameter = parameter (fun _ hex -> return (Hex.to_bytes (`Hex hex)))
 let commands () =
   [ command
       ~group
-      ~desc:"List the registered encoding in Tezos."
+      ~desc:"List the registered encoding in micash."
       no_options
       (fixed ["list"; "encodings"])
       (fun () (cctxt : #Client_context.printer) ->

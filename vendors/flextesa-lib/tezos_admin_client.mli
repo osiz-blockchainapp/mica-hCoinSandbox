@@ -31,7 +31,7 @@ val successful_command :
      ; .. >
   -> string list
   -> ( Process_result.t
-     , [> Command_error.t | System_error.t] )
+     , [> Command_error.t | `Lwt_exn of exn] )
      Asynchronous_result.t
 
 val inject_protocol :
@@ -43,5 +43,5 @@ val inject_protocol :
      ; .. >
   -> path:string
   -> ( Process_result.t * string
-     , [> Command_error.t | System_error.t] )
+     , [> Command_error.t | `Lwt_exn of exn] )
      Asynchronous_result.t

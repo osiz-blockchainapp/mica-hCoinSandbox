@@ -24,6 +24,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* This can be removed once the protocol is fixed
+   (currently there is [to_int Int32.max_int] which is obviously invalid). *)
+let () =
+  if Sys.word_size <> 64 then (
+    prerr_endline "Non-64 bit architectures are not supported." ;
+    exit 1 )
+
 let () =
   let log s = Node_logging.fatal_error "%s" s in
   Lwt_exit.exit_on ~log Sys.sigint ;
@@ -52,11 +59,13 @@ let term =
 
 let description =
   [ `S "DESCRIPTION";
-    `P "Entry point for initializing, configuring and running a Tezos node.";
+    `P "Entry point for initializing, configuring and running a micash node.";
     `P Node_identity_command.Manpage.command_description;
     `P Node_run_command.Manpage.command_description;
     `P Node_config_command.Manpage.command_description;
-    `P Node_snapshot_command.Manpage.command_description ]
+    `P Node_upgrade_command.Manpage.command_description;
+    `P Node_snapshot_command.Manpage.command_description;
+    `P Node_reconstruct_command.Manpage.command_description ]
 
 let man = description @ Node_run_command.Manpage.examples
 
@@ -71,7 +80,9 @@ let commands =
   [ Node_run_command.cmd;
     Node_config_command.cmd;
     Node_identity_command.cmd;
-    Node_snapshot_command.cmd ]
+    Node_upgrade_command.cmd;
+    Node_snapshot_command.cmd;
+    Node_reconstruct_command.cmd ]
 
 let () =
   Random.self_init () ;

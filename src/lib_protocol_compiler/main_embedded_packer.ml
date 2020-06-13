@@ -40,7 +40,7 @@ let (hash, sources) =
   | Error err ->
       Format.kasprintf
         Pervasives.failwith
-        "Failed to read TEZOS_PROTOCOL: %a"
+        "Failed to read micash_PROTOCOL: %a"
         pp_print_error
         err
 

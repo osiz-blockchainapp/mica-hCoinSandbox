@@ -673,7 +673,7 @@ usage() {
     echo "       Replace 'alphanet.sh' with the one found in the docker image."
     echo "  Advanced commands:"
     echo "    $0 node <start|stop|status|log>"
-    echo "    $0 node upgrade"
+    echo "    $0 upgrade"
     echo "    $0 snapshot import <snapshot_file>"
     echo "    $0 baker <start|stop|status|log>"
     echo "    $0 endorser <start|stop|status|log>"
@@ -706,12 +706,6 @@ case $(basename "$0") in
         docker_image=tezos:latest
         docker_compose_base_name=localnet
         default_port=14732
-        ;;
-    carthagenet.sh)
-        docker_base_dir="$HOME/.tezos-carthagenet"
-        docker_image=tezos/tezos:carthagenet
-        docker_compose_base_name=carthagenet
-        default_port=19732
         ;;
     zeronet.sh)
         docker_base_dir="$HOME/.tezos-zeronet"
@@ -819,9 +813,9 @@ case "$command" in
             log)
                 log_node
                 ;;
-            upgrade)
-                upgrade_node_storage
-                ;;
+	        upgrade)
+		        upgrade_node_storage
+		        ;;
             stop)
                 stop_node
                 ;;

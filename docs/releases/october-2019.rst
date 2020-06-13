@@ -7,13 +7,11 @@ Mainnet October 2019
 
 The new storage backend uses a different file format for context
 files, which contain chain data. As a result, a mainnet node in
-archive mode requires less than 40GB disk space, compared to more than
-200GB before that.
+archive mode requires less than 40Gb disk space, compared to more than
+200Gb before that.
 
 To upgrade a mainnet node which is **in archive mode**, you need to
-bootstrap from scratch (delete the old context and store folders in the 
-``.tezos-node`` data directory, otherwise the node will not start). 
-The synchronization process usually takes a few days. Don't forget to
+bootstrap from scratch. This usually takes a few days. Don't forget to
 run your node with ``--history-mode=archive`` as this setting will be lost.
 
 To upgrade a mainnet node which is **not in archive mode**, export a

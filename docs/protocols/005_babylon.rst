@@ -1,7 +1,7 @@
 .. _005_babylon:
 
-Protocol 005_PsBabyM1 Babylon
-=============================
+Protocol 005 Babylon - **Proposal**
+===================================
 
 **Important: revision 005_PsBABY5H of protocol Babylon contains a bug that is corrected in the latest version 005_PsBabyM1**
 more details can be found in section `Bug affecting Bigmaps in 005_PsBABY5H`_.
@@ -411,7 +411,7 @@ To set delegate using the manager.tz script, one can use:
 
    tezos-client transfer 0 from <src> to <dst> \
                --entrypoint 'do' \
-               --arg '{ DROP ; NIL operation ; PUSH key_hash "<dlgt>" ; SOME ; SET_DELEGATE ; CONS }'
+               --arg '{ DROP ; NIL operation ; PUSH key_hash <dlgt> ; SOME ; SET_DELEGATE ; CONS }'
 
 - ``src``: has to be equal to the ``key_hash`` found in the contract's storage,
   i.e. its manager.
@@ -436,7 +436,7 @@ To transfer (spend) tezos from originated contract to an implicit account, use:
 
    tezos-client transfer 0 from <src> to <dst> \
                --entrypoint 'do' \
-               --arg '{ DROP ; NIL operation ; PUSH key_hash "<adr>" ; IMPLICIT_ACCOUNT ; PUSH mutez <val> ; UNIT ; TRANSFER_TOKENS ; CONS }'
+               --arg '{ DROP ; NIL operation ; PUSH key_hash <adr> ; IMPLICIT_ACCOUNT ; PUSH mutez <val> ; UNIT ; TRANSFER_TOKENS ; CONS }'
 
 - ``src``: has to be equal to the ``key_hash`` found in the contract's storage,
   i.e. its manager.
@@ -507,7 +507,7 @@ Template ``add_set_delegate``
 The original script's parameter is wrapped in ``or`` type, with its left part
 being the newly added parameter of type:
 
-.. code-block:: michelson
+.. code:: tz
 
    or
      (key_hash %set_delegate)
@@ -523,7 +523,7 @@ To set delegate using the added entrypoint, one can use:
 
   tezos-client transfer 0 from <src> to <dst> \
                --entrypoint 'set_delegate' \
-               --arg '"<dlgt>"'
+               --arg '<dlgt>'
 
 - ``src``: has to be equal to the ``key_hash`` found in the left part of the
   contract's storage ``pair``, i.e. its manager.
@@ -536,7 +536,7 @@ To remove delegate, use:
 
   tezos-client transfer 0 from <src> to <dst> \
                --entrypoint 'remove_delegate' \
-               --arg 'Unit' # arg is optional, it defaults to Unit when omitted
+               --arg 'unit' # arg is optional, it defaults to unit when omitted
 
 - ``src``: has to be equal to the ``key_hash`` found in the left part of the
   contract's storage ``pair``, i.e. its manager.
@@ -548,19 +548,13 @@ entrypoints with ``tezos-client transfer 0``.
 
 Gas cost changes
 ^^^^^^^^^^^^^^^^
-The cost for managing the delegate of the ``manager.tz`` script is 25817
-gas to set the delegate and 25722 to withdraw the current delegation.
 
-For other contracts with ``%set_delegate`` and
-``remove_delegate``, it varies with the contract as the gas cost for
-typechecking depends on the contract's code.
+Below you can find the gas cost for each operation.
 
-The gas cost for each kind of transfer operation is as follow:
-
-- implicit account (tz1|tz2|tz3...) → implicit account :  10207 gas
-- implicit account → originated manager.tz : 15285 gas
-- originated manager.tz → implicit account : 26183 gas
-- originated manager.tz → originated manager.tz : 44625 gas
+tz1|tz2|tz3 -> tz1|tz2|tz3 :  10207 gas
+tz1|tz2|tz3 → manager.tz : 15285 gas
+manager.tz → tz1|tz2|tz3 : 26183 gas
+manager.tz → manager.tz : 44625 gas
 
 .. _005-bigmap-bug:
 

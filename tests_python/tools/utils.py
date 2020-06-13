@@ -7,7 +7,6 @@ import json
 import time
 import re
 import hashlib
-import subprocess
 import requests
 import ed25519
 import base58check
@@ -93,18 +92,19 @@ def synchronize(clients: List[Client], max_diff: int = 2) -> bool:
     return max(levels) - min(levels) <= max_diff
 
 
+def get_block_per_level(client: Client, level: int) -> str:
+    """ Return the block at a given level, level must be less or equal than
+        current head. If the level is higher than the current, it will fail"""
+    block = client.rpc('get', f'/chains/main/blocks/{level}')
+    return block
+
+
 def get_block_hash(client: Client, level: int) -> str:
     """Return block hash at given level, level must be less or equal
        than current head."""
-    cur = 'head'
-    while True:
-        block = client.rpc('get', f'/chains/main/blocks/{cur}')
-        assert level <= block['header']['level']
-        if block['header']['level'] == level:
-            block_hash = block['hash']
-            assert isinstance(block_hash, str)
-            return str(block)
-        cur = block['header']['predecessor']
+    block_hash = get_block_per_level(client, level)['hash']
+    assert isinstance(block_hash, str)
+    return str(block_hash)
 
 
 def all_blocks(client: Client) -> List[dict]:
@@ -152,11 +152,11 @@ def check_logs_counts(logs: List[str], pattern: str) -> int:
     return count
 
 
-def activate_alpha(client, parameters=None):
+def activate_alpha(client, parameters=None, timestamp=None):
     if parameters is None:
         parameters = constants.PARAMETERS
     proto = constants.ALPHA
-    client.activate_protocol_json(proto, parameters)
+    client.activate_protocol_json(proto, parameters, timestamp=timestamp)
 
 
 def pprint(json_data: dict) -> None:
@@ -278,33 +278,3 @@ def sign_operation(encoded_operation: str, secret_key: str) -> str:
 
 def mutez_of_tez(tez: float):
     return int(tez*1000000)
-
-
-def check_run_failure(code, pattern, mode='stderr'):
-    """Executes [code()] and expects the code to fail and raise
-    [subprocess.CalledProcessError]. If so, the [pattern] is searched
-    in stderr. If it is found, returns True; else returns False.
-    """
-    try:
-        code()
-        return False
-    except subprocess.CalledProcessError as exc:
-        print(exc)
-        stdout_output = exc.args[2]
-        stderr_output = exc.args[3]
-        data = []
-        if mode == 'stderr':
-            data = stderr_output.split('\n')
-        else:
-            data = stdout_output.split('\n')
-        for line in data:
-            if re.search(pattern, line):
-                return True
-        return False
-
-
-def check_typecheck_data_failure(client, data: str, typ: str) -> None:
-    def cmd():
-        client.typecheck_data(data, typ)
-
-    check_run_failure(cmd, 'ill-typed data')

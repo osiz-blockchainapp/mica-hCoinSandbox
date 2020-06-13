@@ -82,7 +82,7 @@ let () =
         Michelson_v1_printer.print_expr
         script
         Hex.pp
-        (Script_expr_hash.to_bytes hash |> Hex.of_bytes))
+        (Hex.of_bytes (Script_expr_hash.to_bytes hash)))
     Data_encoding.(
       obj2
         (req "hash" Script_expr_hash.encoding)

@@ -49,8 +49,7 @@ module type S = sig
 
   val null_logger : logger
 
-  val timings_logger :
-    gettimeofday:(unit -> float) -> Format.formatter -> logger
+  val timings_logger : Format.formatter -> logger
 
   val full_logger : Format.formatter -> logger
 

@@ -432,10 +432,6 @@ module type Bits = sig
 
   val ( lor ) : t -> t -> t
 
-  val ( lsr ) : t -> int -> t
-
-  val ( lsl ) : t -> int -> t
-
   val pred : t -> t
 
   val less_than : t -> t -> bool
@@ -450,60 +446,58 @@ module type Bits = sig
 
   val one : t
 
-  val size : int
+  val power_2 : int -> t
 end
 
-module type Size = sig
-  val size : int
-end
+module Int2_64 : Bits with type t = int64 * int64 = struct
+  type t = int64 * int64
 
-module Bits (S : Size) = struct
-  type t = Z.t
+  let zero = (0L, 0L)
 
-  let size = S.size
+  let one = (0L, 1L)
 
-  let higher_bit = Z.shift_left Z.one size
+  let hash v = Hashtbl.hash v
 
-  let mask = Z.pred higher_bit
+  let lnot (a, b) = (Int64.lognot a, Int64.lognot b)
 
-  let mark n = Z.logor higher_bit n
+  let ( land ) (a1, b1) (a2, b2) = (Int64.logand a1 a2, Int64.logand b1 b2)
 
-  let unmark n = Z.logxor higher_bit n
+  let ( lxor ) (a1, b1) (a2, b2) = (Int64.logxor a1 a2, Int64.logxor b1 b2)
 
-  let one = mark Z.one
+  let ( lor ) (a1, b1) (a2, b2) = (Int64.logor a1 a2, Int64.logor b1 b2)
 
-  let zero = higher_bit
+  let less_than ((a1, b1) : t) ((a2, b2) : t) =
+    let cmp_a = Compare.Uint64.compare a1 a2 in
+    if cmp_a = 0 then Compare.Uint64.(b1 < b2) else cmp_a < 0
 
-  let hash = Z.hash
+  let equal ((a1, b1) : t) ((a2, b2) : t) = a1 = a2 && b1 = b2
 
-  let equal = Z.equal
+  module Int64_infix = struct
+    let ( lor ) = Int64.logor
 
-  let less_than = Z.lt
+    let ( lsr ) = Int64.shift_right_logical
 
-  let highest_bit_unmarked n =
-    if Z.equal Z.zero n then Z.zero
-    else Z.(Z.one lsl Pervasives.pred (numbits n))
+    let ( - ) = Int64.sub
+  end
 
-  let highest_bit n = mark (highest_bit_unmarked (unmark n))
+  let highest_bit_int64 x =
+    Int64_infix.(
+      let x = x lor (x lsr 1) in
+      let x = x lor (x lsr 2) in
+      let x = x lor (x lsr 4) in
+      let x = x lor (x lsr 8) in
+      let x = x lor (x lsr 16) in
+      let x = x lor (x lsr 32) in
+      x - (x lsr 1))
 
-  let lnot x = Z.logor (Z.lognot x) higher_bit
+  let highest_bit (a, b) =
+    if a <> 0L then (highest_bit_int64 a, 0L) else (0L, highest_bit_int64 b)
 
-  let ( land ) = Z.logand
+  let pred (a, b) = if b <> 0L then (a, Int64.pred b) else (Int64.pred a, -1L)
 
-  let ( lxor ) a b = Z.logor (Z.logxor a b) higher_bit
-
-  let ( lor ) = Z.logor
-
-  let ( lsr ) a n =
-    Z.logor (Z.shift_right_trunc (Z.logxor a higher_bit) n) higher_bit
-
-  let ( lsl ) a n = Z.logor (Z.logand (Z.shift_left a n) mask) higher_bit
-
-  let pred = Z.pred
-
-  let of_z n = mark n
-
-  let to_z n = unmark n
+  let power_2 n =
+    if n < 64 then (0L, Int64.shift_left 1L n)
+    else (Int64.shift_left 1L (n - 64), 0L)
 end
 
 module BE_gen_prefix (Bits : Bits) :
@@ -513,7 +507,7 @@ module BE_gen_prefix (Bits : Bits) :
      and type mask = Bits.t = struct
   type key = Bits.t
 
-  type mask = Bits.t (* Only a single bit set *)
+  type mask = Bits.t (* All bits set up to a point *)
 
   type prefix = Bits.t
 
@@ -531,24 +525,28 @@ module BE_gen_prefix (Bits : Bits) :
 
   open Bits
 
-  let full_length_mask = Bits.one
+  let full_length_mask = lnot Bits.zero
 
-  let strictly_shorter_mask (m1 : mask) m2 = Bits.less_than m2 m1
+  let strictly_shorter_mask (m1 : mask) m2 = Bits.less_than m1 m2
 
-  let select_bit ~prefix ~mask = not (Bits.equal (prefix land mask) Bits.zero)
+  let select_bit ~prefix ~mask =
+    let discriminant = highest_bit (lnot mask) in
+    not (Bits.equal (prefix land discriminant) Bits.zero)
 
-  let apply_mask prefix mask = prefix land lnot (pred mask)
+  let apply_mask prefix mask = prefix land mask
 
   let match_prefix ~key ~prefix ~mask =
     equal_prefix (apply_mask key mask) prefix
 
-  let common_mask p0 p1 = Bits.highest_bit (* [@inlined] *) (p0 lxor p1)
+  let common_mask p0 p1 =
+    let discriminant = Bits.highest_bit (* [@inlined] *) (p0 lxor p1) in
+    lnot (discriminant lor pred discriminant)
 
   let key_prefix x = x
 
   let prefix_key p _m = p
 
-  let smaller_set_mask m1 m2 = lnot (pred m1) land lnot (pred m2)
+  let smaller_set_mask m1 m2 = m1 land m2
 
   let compare_prefix m1 p1 m2 p2 =
     let min_mask = smaller_set_mask m1 m2 in
@@ -568,7 +566,7 @@ module LE_prefix :
      and type mask = int = struct
   type key = int
 
-  type mask = int (* Only a single bit set *)
+  type mask = int (* All bits set from a point *)
 
   type prefix = int
 
@@ -584,25 +582,27 @@ module LE_prefix :
 
   let hash_prefix x = x
 
-  let full_length_mask = -1 lxor (-1 lsr 1)
+  let full_length_mask = -1
 
   let strictly_shorter_mask (m1 : mask) m2 = m1 < m2
 
-  let select_bit ~prefix ~mask = prefix land mask != 0
+  let select_bit ~prefix ~mask =
+    let discriminant = succ mask in
+    prefix land discriminant != 0
 
-  let apply_mask prefix mask = prefix land (mask - 1)
+  let apply_mask prefix mask = prefix land mask
 
   let match_prefix ~key ~prefix ~mask = apply_mask key mask == prefix
 
   let lowest_bit x = x land -x
 
-  let common_mask p0 p1 = lowest_bit (p0 lxor p1)
+  let common_mask p0 p1 = pred (lowest_bit (p0 lxor p1))
 
   let key_prefix x = x
 
   let prefix_key p _m = p
 
-  let smaller_set_mask m1 m2 = (m1 - 1) land (m2 - 1)
+  let smaller_set_mask m1 m2 = m1 land m2
 
   let compare_prefix m1 p1 m2 p2 =
     let min_mask = smaller_set_mask m1 m2 in
@@ -615,60 +615,31 @@ module LE_prefix :
     else Ptree_sig.Different
 end
 
-module BE_prefix :
-  Ptree_sig.Prefix
-    with type key = int
-     and type prefix = int
-     and type mask = int = struct
-  type key = int
+module BE_int = struct
+  type t = int
 
-  type mask = int (* Only a single bit set *)
+  let lnot = lnot
 
-  type prefix = int
+  let ( land ) = ( land )
 
-  let equal_key = ( == )
+  let ( lxor ) = ( lxor )
 
-  let equal_mask = ( == )
+  let ( lor ) = ( lor )
 
-  let equal_prefix = ( == )
+  let pred = pred
 
-  let hash_key x = x
-
-  let hash_mask x = x
-
-  let hash_prefix x = x
-
-  let full_length_mask = 1
-
-  let strictly_shorter_mask (m1 : mask) m2 = m1 > m2
-
-  let select_bit ~prefix ~mask = prefix land mask != 0
+  let less_than = ( <= )
 
   module Nativeint_infix = struct
     let ( lor ) = Nativeint.logor
 
-    (*let (lsl) = Nativeint.shift_left*)
     let ( lsr ) = Nativeint.shift_right_logical
-
-    (*let (asr) = Nativeint.shift_right*)
-    let ( land ) = Nativeint.logand
-
-    let lnot = Nativeint.lognot
-
-    let ( lxor ) = Nativeint.logxor
 
     let ( - ) = Nativeint.sub
   end
 
-  let apply_mask prefix mask =
-    let open Nativeint_infix in
-    let prefix = Nativeint.of_int prefix in
-    let mask = Nativeint.of_int mask in
-    Nativeint.to_int (prefix land lnot (mask - 1n))
-
-  let match_prefix ~key ~prefix ~mask = apply_mask key mask == prefix
-
   let highest_bit x =
+    let x = Nativeint.of_int x in
     Nativeint_infix.(
       let x = x lor (x lsr 1) in
       let x = x lor (x lsr 2) in
@@ -678,34 +649,15 @@ module BE_prefix :
       let x = if Sys.word_size > 32 then x lor (x lsr 32) else x in
       Nativeint.to_int (x - (x lsr 1)))
 
-  let common_mask p0 p1 =
-    let open Nativeint_infix in
-    let p0 = Nativeint.of_int p0 in
-    let p1 = Nativeint.of_int p1 in
-    highest_bit (p0 lxor p1)
+  let equal = ( = )
 
-  let key_prefix x = x
+  let hash = Hashtbl.hash
 
-  let prefix_key p _m = p
+  let zero = 0
 
-  let smaller_set_mask m1 m2 =
-    let open Nativeint_infix in
-    lnot (m1 - 1n) land lnot (m2 - 1n)
+  let one = 1
 
-  let compare_prefix m1 p1 m2 p2 =
-    let open Nativeint_infix in
-    let m1 = Nativeint.of_int m1 in
-    let m2 = Nativeint.of_int m2 in
-    let p1 = Nativeint.of_int p1 in
-    let p2 = Nativeint.of_int p2 in
-    let min_mask = smaller_set_mask m1 m2 in
-    let applied_p1 = p1 land min_mask in
-    let applied_p2 = p2 land min_mask in
-    if applied_p1 = applied_p2 then
-      if m1 > m2 then Ptree_sig.Shorter
-      else if m1 < m2 then Ptree_sig.Longer
-      else Ptree_sig.Equal
-    else Ptree_sig.Different
+  let power_2 n = 1 lsl n
 end
 
 module Make (P : Ptree_sig.Prefix) (V : Value) = struct
@@ -1237,7 +1189,5 @@ module type S = sig
 end
 
 module Make_LE (V : Value) = Make (LE_prefix) (V)
-module Make_BE (V : Value) = Make (BE_prefix) (V)
-module Make_BE_gen (V : Value) (B : Bits) = Make (BE_gen_prefix (B)) (V)
-module Make_BE_sized (V : Value) (S : Size) =
-  Make (BE_gen_prefix (Bits (S))) (V)
+module Make_BE (V : Value) = Make (BE_gen_prefix (BE_int)) (V)
+module Make_BE_int2_64 (V : Value) = Make (BE_gen_prefix (Int2_64)) (V)

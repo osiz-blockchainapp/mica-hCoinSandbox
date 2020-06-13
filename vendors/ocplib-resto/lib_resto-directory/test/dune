@@ -1,6 +1,6 @@
 (executable
  (name resto_test)
- (flags (:standard ))
+ (flags (:standard -safe-string))
  (libraries ocplib-resto-directory ocplib-resto-json lwt.unix))
 
 (alias

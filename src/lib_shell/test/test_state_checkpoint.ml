@@ -37,14 +37,7 @@ let genesis_protocol =
 
 let genesis_time = Time.Protocol.of_seconds 0L
 
-let proto =
-  match Registered_protocol.get genesis_protocol with
-  | None ->
-      assert false
-  | Some proto ->
-      proto
-
-module Proto = (val proto)
+module Proto = (val Registered_protocol.get_exn genesis_protocol)
 
 let genesis : State.Chain.genesis =
   {time = genesis_time; block = genesis_block; protocol = genesis_protocol}

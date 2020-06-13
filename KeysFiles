@@ -1,0 +1,19 @@
+For example 
+
+dicatator Key
+
+alice
+
+bob
+
+
+[ 
+  { "name": "dictator",
+    "value":
+      "unencrypted:edsk2iVA5n61RdNGSSmLYmgVJaSgYG5b7mBgmpVN9EDHXZgF1sUMFV" },
+  { "name": "alice",
+    "value":
+      "unencrypted:edsk2puZGc5ZJVeCAJxG3jT57qrpwxGnz1DfmnuDSrGidgEnYuKCEB" },
+  { "name": "bob",
+    "value":
+      "unencrypted:edsk38zPE7tv23v2P8dq1inkrPMM4BE4VyhKwnaxNEhFkKW864x9Zy" } ]

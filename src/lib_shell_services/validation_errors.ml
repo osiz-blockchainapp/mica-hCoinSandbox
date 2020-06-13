@@ -175,8 +175,8 @@ let () =
         exp)
     Data_encoding.(
       obj2
-        (req "wrong_context_hash" Context_hash.encoding)
-        (req "expected_context_hash" Context_hash.encoding))
+        (req "local_context_hash" Context_hash.encoding)
+        (req "block_header_context_hash" Context_hash.encoding))
     (function Inconsistent_hash (got, exp) -> Some (got, exp) | _ -> None)
     (fun (got, exp) -> Inconsistent_hash (got, exp))
 

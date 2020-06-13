@@ -37,7 +37,7 @@ let base_dir_arg =
     ~placeholder:"path"
     ~doc:
       ( "data directory\n\
-         The directory where the Tezos codec will output logs.\n\
+         The directory where the micash codec will output logs.\n\
          By default: '" ^ default_base_dir ^ "'." )
     (parameter (fun _ctxt x -> return x))
 

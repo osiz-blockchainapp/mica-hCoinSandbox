@@ -63,8 +63,7 @@ let print_run_result (cctxt : #Client_context.printer) ~show_source ~parsed =
          %a@]@,\
          @[<v 2>emitted operations@,\
          %a@]@,\
-         @[<v 2>big_map diff@,\
-         %a@]@]@."
+         @[<v 2>big_map diff%a@]@]@."
         print_expr
         storage
         (Format.pp_print_list Operation_result.pp_internal_operation)
@@ -85,8 +84,7 @@ let print_trace_result (cctxt : #Client_context.printer) ~show_source ~parsed =
          @[<v 2>emitted operations@,\
          %a@]@,\
          @[<v 2>big_map diff@,\
-         %a@]@,\
-         @[<v 2>trace@,\
+         %a@[<v 2>trace@,\
          %a@]@]@."
         print_expr
         storage

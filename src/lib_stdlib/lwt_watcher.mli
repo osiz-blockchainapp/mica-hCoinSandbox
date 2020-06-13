@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** This module implements a one-to-many publish/subscribe pattern.
+(** This module implements a one-to-many publish/suscribe pattern.
 
     Clients can register/unregister to an [input]. Events notified to the input
     (through [notify]) are dispatched asynchronously to all registered clients

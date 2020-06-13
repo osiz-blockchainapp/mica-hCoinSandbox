@@ -274,7 +274,7 @@ let base_dir_arg () =
     ~placeholder:"path"
     ~doc:
       ( "client data directory\n\
-         The directory where the Tezos client will store all its data.\n\
+         The directory where the micash client will store all its data.\n\
          By default: '" ^ default_base_dir ^ "'." )
     (string_parameter ())
 

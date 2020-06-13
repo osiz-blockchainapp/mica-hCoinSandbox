@@ -1,7 +1,5 @@
 #! /bin/sh
 
-# See `update_unit_test.sh` for documentation.
-
 set -e
 
 script_dir="$(cd "$(dirname "$0")" && echo "$(pwd -P)/")"
@@ -15,7 +13,7 @@ sed -z 's/^\(.*##BEGIN_OPAM##\n\).*\(\n##END_OPAM##.*\)$/\1/' "$src_dir/.gitlab-
 
 cpt=0
 for package in $packages; do
-    num=$(printf "%02d" $cpt)
+    num=$(printf "%03d" $cpt)
     cpt=$((cpt+1))
     cat >> $tmp <<EOF
 opam:$num:$package:

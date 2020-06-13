@@ -44,7 +44,7 @@ val announced :
   t
 
 (** [select acceptables remote] computes network protocol version to
-    be used on a given connection where [remote] is version announced
+    be used on a given connection where [remote] is version annouced
     by the remote peer, and [acceptables] the locally accepted
     versions for the higher-level messages. *)
 val select :

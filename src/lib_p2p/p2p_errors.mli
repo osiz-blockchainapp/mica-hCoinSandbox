@@ -23,15 +23,17 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(* P2P IO scheduler *)
+(* p2p io scheduler *)
 
 type error += Connection_closed
 
-(* P2P socket *)
+(* p2p socket *)
 
 type error += Decipher_error
 
 type error += Invalid_message_size
+
+type error += Invalid_incoming_ciphertext_size
 
 type error += Encoding_error
 
@@ -49,7 +51,7 @@ type error += Invalid_auth
 
 type error += Invalid_chunks_size of {value : int; min : int; max : int}
 
-(* P2P pool *)
+(* p2p pool *)
 
 type error += Pending_connection
 

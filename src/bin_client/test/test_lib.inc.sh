@@ -187,7 +187,7 @@ get_NOW () {
     local TBB=`$client rpc get /chains/main/blocks/head/context/constants | \
                jq '.time_between_blocks | .[0]' | \
                tr -d '"'`
-    echo "$(TZ='AAA' date -d "${PRED_TS} + ${TBB} seconds" +%FT%TZ)"
+	echo "$(TZ='AAA' date -d "${PRED_TS} + ${TBB} seconds" +%FT%TZ)"
 }
 
 get_contract_addr () {
@@ -268,7 +268,7 @@ assert_protocol() {
     proto=$1
     printf "\n\nAsserting protocol propagation\n"
     for client in "${client_instances[@]}"; do
-        ( $client -p PtYuensgYBb3G3x1hLLbCmcav8ue8Kyd2khADcL5LsT5R1hcXex \
+        ( $client -p Ps9mPmXaRzmzk35gbAYNCAw6UXdE2qoABTHbN2oEEc1qM7CwT9P \
                   rpc get /chains/main/blocks/head/metadata | assert_in_output "\"next_protocol\": \"$proto\"" ) \
               || exit 2
     done

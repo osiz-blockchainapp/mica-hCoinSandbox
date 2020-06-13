@@ -23,6 +23,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+let () =
+  Prevalidator_filters.register (module Tezos_mempool_005_PsBabyM1.Filter) ;
+  Prevalidator_filters.register (module Tezos_mempool_006_PsCARTHA.Filter)
+
 (** Commands *)
 
 let show (args : Node_shared_arg.t) =
@@ -132,16 +136,16 @@ end
 module Manpage = struct
   let command_description =
     "The $(b,config) command is meant to inspect and amend the configuration \
-     of the Tezos node. This command is complementary to manually editing the \
-     tezos node configuration file. Its arguments are a subset of the \
+     of the micash node. This command is complementary to manually editing the \
+     micash node configuration file. Its arguments are a subset of the \
      $(i,run) command ones."
 
   let description =
     [ `S "DESCRIPTION";
       `P (command_description ^ " Several operations are possible: ");
       `P
-        "$(b,show) reads, parses and displays Tezos current config file. Use \
-         this command to see exactly what config file will be used by Tezos. \
+        "$(b,show) reads, parses and displays micash current config file. Use \
+         this command to see exactly what config file will be used by micash. \
          If additional command-line arguments are provided, the displayed \
          configuration will be amended accordingly. This is the default \
          operation.";
@@ -155,8 +159,8 @@ module Manpage = struct
          present and will abort otherwise.";
       `P
         "$(b,update) is the main option to edit the configuration file of \
-         Tezos. It will parse command line arguments and add or replace \
-         corresponding entries in the Tezos configuration file." ]
+         micash. It will parse command line arguments and add or replace \
+         corresponding entries in the micash configuration file." ]
 
   let options =
     let schema = Data_encoding.Json.schema Node_config_file.encoding in

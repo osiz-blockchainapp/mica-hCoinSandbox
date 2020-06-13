@@ -4,7 +4,7 @@ open Console
 
 let run state node_exec client_exec () =
   Test_scenario.network_with_protocol ~size:2 state ~node_exec ~client_exec
-  >>= fun (nodes, _protocol) ->
+  >>= fun (nodes, protocol) ->
   match nodes with
   | [] | [_] | _ :: _ :: _ :: _ ->
       assert false

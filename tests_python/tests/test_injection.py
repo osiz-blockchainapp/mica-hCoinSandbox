@@ -9,14 +9,14 @@ def clients(sandbox):
     """Launches 3 nodes in sandbox mode (genesis, doesn't activate alpha)."""
     num_nodes = 3
     for i in range(num_nodes):
-        sandbox.add_node(i, params=['--connections', '30'])
+        sandbox.add_node(i, params=['--connections', '30', '--bootstrap-threshold', '0'])
     yield sandbox.all_clients()
 
 
 PROTO = f'{paths.TEZOS_HOME}/src/bin_client/test/proto_test_injection'
 COMPILER = (f'{paths.TEZOS_HOME}/_build/default/src/lib_protocol_compiler/'
             'main_native.exe')
-PARAMS = ['-p', 'PtYuensgYBb3G3x1hLLbCmcav8ue8Kyd2khADcL5LsT5R1hcXex']
+PARAMS = ['-p', 'Ps9mPmXaRzmzk35gbAYNCAw6UXdE2qoABTHbN2oEEc1qM7CwT9P']
 
 
 @pytest.mark.incremental
@@ -87,5 +87,5 @@ class TestActivation:
         assert client.get_level(params=PARAMS) == 1
 
     def test_protocol_genesis(self, client):
-        proto = 'PtYuensgYBb3G3x1hLLbCmcav8ue8Kyd2khADcL5LsT5R1hcXex'
+        proto = 'Ps9mPmXaRzmzk35gbAYNCAw6UXdE2qoABTHbN2oEEc1qM7CwT9P'
         assert client.get_protocol(params=PARAMS) == proto

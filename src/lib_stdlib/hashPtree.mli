@@ -44,10 +44,6 @@ module type Bits = sig
 
   val ( lor ) : t -> t -> t
 
-  val ( lsr ) : t -> int -> t
-
-  val ( lsl ) : t -> int -> t
-
   val pred : t -> t
 
   val less_than : t -> t -> bool
@@ -62,20 +58,10 @@ module type Bits = sig
 
   val one : t
 
-  val size : int
+  val power_2 : int -> t
 end
 
-module type Size = sig
-  val size : int
-end
-
-module Bits (S : Size) : sig
-  include Bits
-
-  val of_z : Z.t -> t
-
-  val to_z : t -> Z.t
-end
+module Int2_64 : Bits with type t = int64 * int64
 
 module type S = sig
   type key
@@ -166,8 +152,5 @@ module Make_LE (V : Value) :
 module Make_BE (V : Value) :
   S with type key = int and type value = V.t and type mask = int
 
-module Make_BE_gen (V : Value) (B : Bits) :
-  S with type key = B.t and type value = V.t and type mask = B.t
-
-module Make_BE_sized (V : Value) (S : Size) :
-  S with type key = Bits(S).t and type value = V.t and type mask = Bits(S).t
+module Make_BE_int2_64 (V : Value) :
+  S with type key = Int2_64.t and type value = V.t and type mask = Int2_64.t

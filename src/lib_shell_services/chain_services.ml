@@ -146,7 +146,7 @@ module S = struct
 
     let delete =
       RPC_service.delete_service
-        ~description:"Remove an invalid block for the tezos storage"
+        ~description:"Remove an invalid block for the micash storage"
         ~query:RPC_query.empty
         ~output:Data_encoding.empty
         RPC_path.(path /: Block_hash.rpc_arg)

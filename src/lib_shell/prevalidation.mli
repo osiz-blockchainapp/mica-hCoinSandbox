@@ -25,7 +25,7 @@
 
 (** A newly received block is validated by replaying locally the block
     creation, applying each operation and its finalization to ensure their
-    consistency. This module is stateless and creates and manipulates the
+    consistency. This module is stateless and creates and manupulates the
     prevalidation_state. *)
 
 module type T = sig
@@ -70,6 +70,8 @@ module type T = sig
   }
 
   val status : t -> status tzresult Lwt.t
+
+  val validation_state : t -> Proto.validation_state
 
   val pp_result : Format.formatter -> result -> unit
 end

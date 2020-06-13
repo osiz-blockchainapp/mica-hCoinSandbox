@@ -31,6 +31,8 @@ type error += Non_private_sandbox of P2p_addr.t
 
 type error += RPC_Port_already_in_use of P2p_point.Id.t list
 
+type error += Invalid_sandbox_file of string
+
 let () =
   register_error_kind
     `Permanent
@@ -53,39 +55,32 @@ let () =
     `Permanent
     ~id:"main.run.port_already_in_use"
     ~title:"Cannot start node: RPC port already in use"
-    ~description:"Another tezos node is probably running on the same RPC port."
+    ~description:"Another micash node is probably running on the same RPC port."
     ~pp:(fun ppf addrlist ->
       Format.fprintf
         ppf
-        "Another tezos node is probably running on one of these addresses \
+        "Another micash node is probably running on one of these addresses \
          (%a). Please choose another RPC port."
         (Format.pp_print_list P2p_point.Id.pp)
         addrlist)
     Data_encoding.(obj1 (req "addrlist" (list P2p_point.Id.encoding)))
     (function RPC_Port_already_in_use addrlist -> Some addrlist | _ -> None)
-    (fun addrlist -> RPC_Port_already_in_use addrlist)
+    (fun addrlist -> RPC_Port_already_in_use addrlist) ;
+  register_error_kind
+    `Permanent
+    ~id:"main.run.invalid_sandbox_file"
+    ~title:"Invalid sandbox file"
+    ~description:"The provided sandbox file is not a valid sandbox JSON file."
+    ~pp:(fun ppf s ->
+      Format.fprintf ppf "The file '%s' is not a valid JSON sandbox file" s)
+    Data_encoding.(obj1 (req "sandbox_file" string))
+    (function Invalid_sandbox_file s -> Some s | _ -> None)
+    (fun s -> Invalid_sandbox_file s)
 
 let ( // ) = Filename.concat
 
 let init_node ?sandbox ?checkpoint ~singleprocess (config : Node_config_file.t)
     =
-  ( match sandbox with
-  | None ->
-      Lwt.return_none
-  | Some sandbox_param -> (
-    match sandbox_param with
-    | None ->
-        Lwt.return_none
-    | Some file -> (
-        Lwt_utils_unix.Json.read_file file
-        >>= function
-        | Error err ->
-            lwt_warn "Cannot parse sandbox parameters: %s" file
-            >>= fun () ->
-            lwt_debug "%a" pp_print_error err >>= fun () -> Lwt.return_none
-        | Ok json ->
-            Lwt.return_some json ) ) )
-  >>= fun sandbox_param ->
   (* TODO "WARN" when pow is below our expectation. *)
   ( match config.p2p.discovery_addr with
   | None ->
@@ -133,27 +128,34 @@ let init_node ?sandbox ?checkpoint ~singleprocess (config : Node_config_file.t)
           discovery_addr;
           discovery_port;
           trusted_points;
-          peers_file =
-            config.data_dir // Node_data_version.default_peers_file_name;
+          peers_file = config.data_dir // "peers.json";
           private_mode = config.p2p.private_mode;
           greylisting_config = config.p2p.greylisting_config;
           identity;
           proof_of_work_target = Crypto_box.make_target config.p2p.expected_pow;
           disable_mempool = config.p2p.disable_mempool;
-          trust_discovered_peers = sandbox_param <> None;
-          disable_testchain = config.p2p.disable_testchain;
+          trust_discovered_peers = sandbox <> None;
+          disable_testchain = not config.p2p.enable_testchain;
         }
       in
       return_some (p2p_config, config.p2p.limits) )
   >>=? fun p2p_config ->
-  let sandbox_parameters = sandbox_param in
-  let sandbox_param =
-    Option.map ~f:(fun p -> ("sandbox_parameter", p)) sandbox_param
-  in
+  Option.unopt_map
+    ~default:return_none
+    ~f:(fun filename ->
+      Lwt_utils_unix.Json.read_file filename
+      >>= function
+      | Error _err ->
+          fail (Invalid_sandbox_file filename)
+      | Ok json ->
+          return_some ("sandbox_parameter", json))
+    sandbox
+  >>=? fun sandbox_param ->
+  let patch_context = Some (Patch_context.patch_context sandbox_param) in
   let node_config : Node.config =
     {
       genesis;
-      patch_context = Some (Patch_context.patch_context sandbox_param);
+      patch_context;
       store_root = Node_data_version.store_dir config.data_dir;
       context_root = Node_data_version.context_dir config.data_dir;
       protocol_root = Node_data_version.protocol_dir config.data_dir;
@@ -163,7 +165,6 @@ let init_node ?sandbox ?checkpoint ~singleprocess (config : Node_config_file.t)
   in
   Node.create
     ~sandboxed:(sandbox <> None)
-    ?sandbox_parameters
     ~singleprocess
     node_config
     config.shell.peer_validator_limits
@@ -255,7 +256,7 @@ let run ?verbosity ?sandbox ?checkpoint ~singleprocess
     ()
   >>= fun () ->
   Updater.init (Node_data_version.protocol_dir config.data_dir) ;
-  lwt_log_notice "Starting the Tezos node..."
+  lwt_log_notice "Starting the micash node..."
   >>= fun () ->
   init_node ?sandbox ?checkpoint ~singleprocess config
   >>= (function
@@ -267,7 +268,7 @@ let run ?verbosity ?sandbox ?checkpoint ~singleprocess
             failwith
               "@[Cannot switch from history mode '%a' to '%a'. Import a \
                context from a corresponding snapshot or re-synchronize a node \
-               with an empty tezos node directory.@]"
+               with an empty micash node directory.@]"
               History_mode.pp
               previous_mode
               History_mode.pp
@@ -277,7 +278,7 @@ let run ?verbosity ?sandbox ?checkpoint ~singleprocess
   >>=? fun node ->
   init_rpc config.rpc node
   >>=? fun rpc ->
-  lwt_log_notice "The Tezos node is now running!"
+  lwt_log_notice "The micash node is now running!"
   >>= fun () ->
   Lwt_exit.(
     wrap_promise @@ retcode_of_unit_result_lwt @@ Lwt_utils.never_ending ())
@@ -285,7 +286,7 @@ let run ?verbosity ?sandbox ?checkpoint ~singleprocess
   (* Clean-shutdown code *)
   Lwt_exit.termination_thread
   >>= fun x ->
-  lwt_log_notice "Shutting down the Tezos node..."
+  lwt_log_notice "Shutting down the micash node..."
   >>= fun () ->
   Node.shutdown node
   >>= fun () ->
@@ -373,13 +374,13 @@ module Term = struct
       "Run the daemon in sandbox mode. P2P to non-localhost addresses are \
        disabled, and constants of the economic protocol can be altered with \
        an optional JSON file. $(b,IMPORTANT): Using sandbox mode affects the \
-       node state and subsequent runs of Tezos node must also use sandbox \
+       node state and subsequent runs of micash node must also use sandbox \
        mode. In order to run the node in normal mode afterwards, a full reset \
        must be performed (by removing the node's data directory)."
     in
     Arg.(
       value
-      & opt ~vopt:(Some None) (some (some string)) None
+      & opt (some non_dir_file) None
       & info
           ~docs:Node_shared_arg.Manpage.misc_section
           ~doc
@@ -422,7 +423,7 @@ end
 
 module Manpage = struct
   let command_description =
-    "The $(b,run) command is meant to run the Tezos node. Most of its command \
+    "The $(b,run) command is meant to run the micash node. Most of its command \
      line arguments corresponds to config file entries, and will have \
      priority over the latter if used."
 
@@ -458,7 +459,7 @@ module Manpage = struct
     description @ Node_shared_arg.Manpage.args @ debug @ examples
     @ Node_shared_arg.Manpage.bugs
 
-  let info = Cmdliner.Term.info ~doc:"Run the Tezos node" ~man "run"
+  let info = Cmdliner.Term.info ~doc:"Run the micash node" ~man "run"
 end
 
 let cmd = (Term.term, Manpage.info)

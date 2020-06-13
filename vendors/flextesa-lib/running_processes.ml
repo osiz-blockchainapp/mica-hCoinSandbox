@@ -112,7 +112,7 @@ let start t process =
     Tezos_stdlib_unix.Systime_os.now () |> Tezos_base.Time.System.to_notation
   in
   let open_file f =
-    System_error.catch
+    Lwt_exception.catch
       ~attach:[("open_file", `String_value f)]
       Lwt.Infix.(
         fun () ->
@@ -138,7 +138,7 @@ let start t process =
       System.write_file t path ~content:s
       >>= fun () -> return (process.command @ [path]) )
   >>= fun actual_command ->
-  System_error.catch
+  Lwt_exception.catch
     (fun () ->
       Lwt_io.with_file ~mode:Lwt_io.output
         ~flags:Unix.[O_CREAT; O_WRONLY; O_APPEND]
@@ -173,15 +173,15 @@ let start_full t process =
   >>= fun proc_state -> return (proc_state, proc_full)
 
 let wait _t {lwt; _} =
-  System_error.catch (fun () -> lwt#close) () >>= fun _status -> return _status
+  Lwt_exception.catch (fun () -> lwt#close) ()
+  >>= fun _status -> return _status
 
 let kill _t {lwt; process} =
   match process.kind with
   | `Process_group | `Process_group_script _ ->
-      System_error.catch
+      Lwt_exception.catch
         (fun () ->
-          Dbg.e EF.(wf "Killing %S" process.id) ;
-          let signal = Sys.sigkill in
+          let signal = Sys.sigterm in
           let pid = ~-(lwt#pid) (* Assumes “in session” *) in
           ( try Unix.kill pid signal with
           | Unix.Unix_error (Unix.ESRCH, _, _) -> ()
@@ -189,7 +189,7 @@ let kill _t {lwt; process} =
           Lwt.return ())
         ()
   | `Docker name -> (
-      System_error.catch Lwt_unix.system (sprintf "docker kill %s" name)
+      Lwt_exception.catch Lwt_unix.system (sprintf "docker kill %s" name)
       >>= fun status ->
       match status with
       | Lwt_unix.WEXITED 0 -> return ()
@@ -234,7 +234,7 @@ let fresh_id _state prefix ~seed =
 
 let run_cmdf state fmt =
   let get_file path =
-    System_error.catch
+    Lwt_exception.catch
       Lwt.(
         fun () ->
           Lwt_io.open_file ~mode:Lwt_io.input path
@@ -265,6 +265,18 @@ let run_cmdf state fmt =
         end))
     fmt
 
+let run_async_cmdf state f fmt =
+  ksprintf
+    (fun s ->
+      let id = fresh_id state "cmd" ~seed:s in
+      let proc = Process.make_in_session id `Process_group ["sh"; "-c"; s] in
+      start_full state proc
+      >>= fun (proc_state, proc) ->
+      f proc
+      >>= fun res ->
+      wait state proc_state >>= fun status -> return (status, res))
+    fmt
+
 let run_successful_cmdf state fmt =
   ksprintf
     (fun cmd ->
@@ -278,46 +290,3 @@ let run_successful_cmdf state fmt =
 let run_genspio state name genspio =
   let proc = Process.genspio (fresh_id state name ~seed:name) genspio in
   start state proc >>= fun proc -> wait state proc
-
-module Async = struct
-  let run_cmdf ?(id_base = "async-cmd") state ~f fmt =
-    ksprintf
-      (fun s ->
-        let id = fresh_id state id_base ~seed:s in
-        let proc = Process.make_in_session id `Process_group ["sh"; "-c"; s] in
-        start_full state proc
-        >>= fun (proc_state, proc) ->
-        Dbg.e EF.(wf "Started async: %S" proc_state.process.id) ;
-        f proc_state proc
-        >>= fun res ->
-        wait state proc_state >>= fun status -> return (status, res))
-      fmt
-
-  let fold_process (process : Lwt_process.process_full) ~init ~f =
-    let out = Lwt_io.read_chars process#stdout in
-    let err = Lwt_io.read_chars process#stderr in
-    let rec go prev_m () =
-      prev_m
-      >>= fun prev ->
-      match (Lwt_stream.get_available out, Lwt_stream.get_available err) with
-      | [], [] -> (
-          System_error.catch Lwt.choose
-            Lwt.
-              [ (Lwt_stream.peek out >>= fun x -> return (`Left x))
-              ; (Lwt_stream.peek err >>= fun x -> return (`Right x)) ]
-          >>= function
-          | `Left None -> (
-              System_error.catch Lwt_stream.peek err
-              >>= function
-              | None -> return prev | Some _ -> go (return prev) () )
-          | `Right None -> (
-              System_error.catch Lwt_stream.peek out
-              >>= function
-              | None -> return prev | Some _ -> go (return prev) () )
-          | _ -> go (return prev) () )
-      | outl, errl -> (
-          f prev (String.of_char_list outl) (String.of_char_list errl)
-          >>= function
-          | `Done n -> return n | `Continue next -> go (return next) () ) in
-    go (return init) ()
-end

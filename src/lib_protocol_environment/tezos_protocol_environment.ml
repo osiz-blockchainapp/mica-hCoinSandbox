@@ -310,6 +310,7 @@ struct
   include Pervasives
   module Pervasives = Pervasives
   module Compare = Compare
+  module Array = Array
   module List = List
 
   module Bytes = struct
@@ -531,24 +532,24 @@ struct
     end
   end
 
-  module Error_core = struct
-    include Tezos_error_monad.Core_maker.Make (struct
+  module Error_monad = struct
+    type 'a shell_tzresult = 'a Error_monad.tzresult
+
+    type shell_error = Error_monad.error = ..
+
+    type error_category = [`Branch | `Temporary | `Permanent]
+
+    include Error_monad.Make (struct
       let id = Format.asprintf "proto.%s." Param.name
     end)
   end
 
-  type error += Ecoproto_error of Error_core.error
+  type error += Ecoproto_error of Error_monad.error
 
   module Wrapped_error_monad = struct
-    type unwrapped = Error_core.error = ..
+    type unwrapped = Error_monad.error = ..
 
-    include (
-      Error_core :
-        sig
-          include Tezos_error_monad.Sig.CORE with type error := unwrapped
-
-          include Tezos_error_monad.Sig.EXT with type error := unwrapped
-        end )
+    include (Error_monad : Error_monad_sig.S with type error := unwrapped)
 
     let unwrap = function
       | Ecoproto_error ecoerror ->
@@ -557,17 +558,6 @@ struct
           None
 
     let wrap ecoerror = Ecoproto_error ecoerror
-  end
-
-  module Error_monad = struct
-    type 'a shell_tzresult = 'a Error_monad.tzresult
-
-    type shell_error = Error_monad.error = ..
-
-    type error_category = [`Branch | `Temporary | `Permanent]
-
-    include Error_core
-    include Tezos_error_monad.Monad_maker.Make (Error_core)
   end
 
   let () =

@@ -218,7 +218,7 @@ let rec input_fundraiser_params (cctxt : #Client_context.io_wallet) =
       let pkh = Signature.Public_key.hash pk in
       let msg =
         Format.asprintf
-          "Your public Tezos address is %a is that correct?"
+          "Your public micash address is %a is that correct?"
           Signature.Public_key_hash.pp
           pkh
       in
@@ -249,7 +249,7 @@ let commands version : Client_context.full Clic.command list =
          raw secret key for the default `unencrypted` scheme, the path on a \
          hardware security module, an alias for an external agent, etc.\n\
          This command gives the list of signer modules that this version of \
-         the tezos client supports."
+         the micash client supports."
       no_options
       (fixed ["list"; "signing"; "schemes"])
       (fun () (cctxt : Client_context.full) ->
@@ -412,7 +412,7 @@ let commands version : Client_context.full Clic.command list =
           pk_uri
         >>=? fun (pkh, public_key) ->
         cctxt#message
-          "Tezos address added: %a"
+          "micash address added: %a"
           Signature.Public_key_hash.pp
           pkh
         >>= fun () ->
@@ -465,7 +465,7 @@ let commands version : Client_context.full Clic.command list =
           Public_key_hash.add ~force cctxt name pkh
           >>=? fun () ->
           cctxt#message
-            "Tezos address added: %a"
+            "micash address added: %a"
             Signature.Public_key_hash.pp
             pkh
           >>= fun () -> Public_key.add ~force cctxt name (pk_uri, public_key));

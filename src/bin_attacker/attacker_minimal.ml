@@ -388,4 +388,4 @@ let main () =
         run_cmd_int_suffix (run_action << lots_transactions 0L 0L),
         "[N {,K,M,G}] Attempt to send N {,kilo,mega,giga}ops" ) ]
   in
-  Arg.parse cmds print_endline "Tezos Evil Client"
+  Arg.parse cmds print_endline "micash Evil Client"

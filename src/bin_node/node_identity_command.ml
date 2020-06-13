@@ -88,8 +88,7 @@ module Term = struct
       ( match (data_dir, config_file) with
       | (None, None) ->
           let default_config =
-            Node_config_file.default_data_dir
-            // Node_data_version.default_config_file_name
+            Node_config_file.default_data_dir // "config.json"
           in
           if Sys.file_exists default_config then
             Node_config_file.read default_config
@@ -97,8 +96,7 @@ module Term = struct
       | (None, Some config_file) ->
           Node_config_file.read config_file
       | (Some data_dir, None) ->
-          Node_config_file.read
-            (data_dir // Node_data_version.default_config_file_name)
+          Node_config_file.read (data_dir // "config.json")
           >>=? fun cfg -> return {cfg with data_dir}
       | (Some data_dir, Some config_file) ->
           Node_config_file.read config_file
@@ -168,15 +166,15 @@ module Manpage = struct
      of a cryptographic key pair as well as a proof-of-work stamp that \
      certifies that enough CPU time has been dedicated to produce the \
      identity, to avoid sybil attacks. An identity with enough proof-of-work \
-     is required to participate in the Tezos network, therefore this command \
-     is necessary to launch Tezos the first time."
+     is required to participate in the micash network, therefore this command \
+     is necessary to launch micash the first time."
 
   let description =
     [ `S "DESCRIPTION";
       `P (command_description ^ " Several options are possible:");
       `P
         "$(b,show) reads, parses and displays the current identity of the \
-         node. Use this command to see what identity will be used by Tezos. \
+         node. Use this command to see what identity will be used by micash. \
          This is the default operation.";
       `P
         "$(b,generate [difficulty]) generates an identity whose proof of work \

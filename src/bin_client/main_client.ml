@@ -42,37 +42,35 @@ let zeronet () =
     Format.eprintf
       "@[<v 2>@{<warning>@{<title>Warning@}@}@,\
        @,\
-      \               This is @{<warning>NOT@} the Tezos Mainnet.@,\
+      \               This is @{<warning>NOT@} the micash Mainnet.@,\
        @,\
       \    The node you are connecting to claims to be running on the@,\
-      \               @{<warning>Tezos Zeronet DEVELOPMENT NETWORK@}.@,\
+      \               @{<warning>micash Zeronet DEVELOPMENT NETWORK@}.@,\
       \         Do @{<warning>NOT@} use your fundraiser keys on this network.@,\
        Zeronet is a testing network, with free tokens and frequent resets.@]@\n\
        @."
 
-let test_network () =
+let alphanet () =
   if not disable_disclaimer then
     Format.eprintf
       "@[<v 2>@{<warning>@{<title>Warning@}@}@,\
        @,\
-      \               This is @{<warning>NOT@} the Tezos Mainnet.@,\
+      \               This is @{<warning>NOT@} the micash Mainnet.@,\
        @,\
       \   The node you are connecting to claims to be running on the@,\
-      \             @{<warning>Tezos %s DEVELOPMENT NETWORK.@}@,\
+      \             @{<warning>micash Alphanet DEVELOPMENT NETWORK.@}@,\
       \        Do @{<warning>NOT@} use your fundraiser keys on this network.@,\
-      \        %s is a testing network, with free tokens.@]@\n\
+      \        Alphanet is a testing network, with free tokens.@]@\n\
        @."
-      (Distributed_db_version.network_name :> string)
-      (Distributed_db_version.network_name :> string)
 
 let mainnet () =
   if not disable_disclaimer then
     Format.eprintf
       "@[<v 2>@{<warning>@{<title>Disclaimer@}@}@,\
-       The  Tezos  network  is  a  new  blockchain technology.@,\
+       The  micash  network  is  a  new  blockchain technology.@,\
        Users are  solely responsible  for any risks associated@,\
-       with usage of the Tezos network.  Users should do their@,\
-       own  research to determine  if Tezos is the appropriate@,\
+       with usage of the micash network.  Users should do their@,\
+       own  research to determine  if micash is the appropriate@,\
        platform for their needs and should apply judgement and@,\
        care in their network interactions.@]@\n\
        @."
@@ -83,7 +81,7 @@ let sandbox () =
       "@[<v 2>@{<warning>@{<title>Warning@}@}@,\
        @,\
       \ The node you are connecting to claims to be running in a@,\
-      \                  @{<warning>Tezos TEST SANDBOX@}.@,\
+      \                  @{<warning>micash TEST SANDBOX@}.@,\
       \    Do @{<warning>NOT@} use your fundraiser keys on this network.@,\
        You should not see this message if you are not a developer.@]@\n\
        @."
@@ -104,7 +102,7 @@ let check_network ctxt =
         zeronet () ;
         Lwt.return_some `Zeronet )
       else if has_prefix "TEZOS_ALPHANET" then (
-        test_network () ;
+        alphanet () ;
         Lwt.return_some `Alphanet )
       else if has_prefix "TEZOS_BETANET" || has_prefix "TEZOS_MAINNET" then (
         mainnet () ;

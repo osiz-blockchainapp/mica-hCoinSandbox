@@ -15,8 +15,12 @@ capability. Tezos not only comes to consensus about the state of its ledger,
 like Bitcoin or Ethereum. It also attempts to come to consensus about how the
 protocol and the nodes should adapt and upgrade.
 
- - Developer documentation is available online at https://tezos.gitlab.io/
-   and is automatically generated from the master branch.
+ - Developer documentation is available online at
+   https://tezos.gitlab.io/master . The documentation is automatically
+   generated for the master branch, the `main network (mainnet)
+   <https://tezos.gitlab.io/mainnet>`_ and the `test network (alphanet)
+   <https://tezos.gitlab.io/alphanet>`_.
+   Make sure you are consulting the right version.
  - The website https://tezos.com/ contains more information about the project.
  - All development happens on GitLab at https://gitlab.com/tezos/tezos
 
@@ -31,16 +35,11 @@ The Community
   important meeting point of the community.
 - Several community-built block explorers are available:
 
-    - https://tezos.id
-    - https://mvp.tezblock.io/
-    - https://teztracker.everstake.one/
-    - https://tzkt.io/ (Baking focused Explorer)
-    - https://mininax.cryptonomic.tech/mainnet
-    - https://baking-bad.org/ (Reward Tracker)
+    - https://tzscan.io
 
 - A few community-run websites collect useful Tezos links:
 
-    - https://www.tezos.help
+    - http://www.tezos.help
     - https://tezos.rocks
 
 - More resources can be found in the :ref:`support` page.
@@ -60,13 +59,13 @@ The Tezos network has been live and open since June 30th 2018.
 
 All the instructions in this documentation are valid for Mainnet
 however we **strongly** encourage users to first try all the
-introduction tutorials on some :ref:`test network <test-networks>` to familiarize themselves without
+introduction tutorials on Alphanet to familiarize themselves without
 risks.
 
-Babylonnet
-~~~~~~~~~~
+Alphanet
+~~~~~~~~
 
-Tezos Babylonnet is a test network for the Tezos blockchain with a
+Tezos Alphanet is a test network for the Tezos blockchain with a
 faucet to obtain free tez (see :ref:`faucet`).
 It is updated and rebooted rarely and it is running the same code as
 the Mainnet.
@@ -74,9 +73,9 @@ It is the reference network for developers wanting to test their
 software before going to beta and for users who want to familiarize
 themselves with Tezos before using their real tez.
 
-We offer support for Babylonnet on IRC.
+We offer support for Alphanet on IRC.
 
-The Tezos Babylonnet (test) network will be live as long as Mainnet will be running the Babylon protocol.
+The Tezos Alpha (test) network has been live and open since February 2017.
 
 Zeronet
 ~~~~~~~
@@ -84,7 +83,7 @@ Zeronet
 Zeronet is the most cutting-edge development network of Tezos. It is
 restarted without notice, possibly several times a day.
 This network is mostly used internally by the Tezos developers and may
-have *different constants* from Babylonnet or Mainnet, for example it
+have *different constants* from Alphanet or Mainnet, for example it
 has shorter cycles and a shorter interval between blocks.
 We offer no support for the Zeronet.
 
@@ -103,7 +102,6 @@ in the :ref:`introduction <howtoget>`.
    introduction/howtoget
    introduction/howtouse
    introduction/howtorun
-   introduction/test_networks
    introduction/support
 
 .. toctree::
@@ -143,7 +141,6 @@ in the :ref:`introduction <howtoget>`.
    developer/flextesa
    developer/python_testing_framework
    developer/contributing
-   developer/merge_team
 
 .. toctree::
    :maxdepth: 2
@@ -152,7 +149,6 @@ in the :ref:`introduction <howtoget>`.
    protocols/003_PsddFKi3
    protocols/004_Pt24m4xi
    protocols/005_babylon
-   protocols/006_carthage
 
 .. toctree::
    :maxdepth: 2
@@ -161,7 +157,6 @@ in the :ref:`introduction <howtoget>`.
    releases/april-2019
    releases/may-2019
    releases/september-2019
-   releases/october-2019
 
 .. toctree::
    :maxdepth: 2

@@ -3,7 +3,9 @@
  (libraries tezos-error-monad
             lwt.unix
             alcotest-lwt)
- (flags (:standard -open Tezos_error_monad)))
+ (flags (:standard -w -9-32
+                   -safe-string
+                   -open Tezos_error_monad)))
 
 (alias
  (name buildtest)

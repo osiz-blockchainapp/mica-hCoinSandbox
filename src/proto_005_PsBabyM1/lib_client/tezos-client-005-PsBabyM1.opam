@@ -15,10 +15,9 @@ depends: [
   "tezos-shell-services"
   "tezos-client-base-unix"
   "tezos-signer-backends"
-  "alcotest-lwt"
+  "alcotest-lwt" { with-test }
 ]
 build: [
-  ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+  [ "dune" "build" "-p" name "-j" jobs ]
 ]
 synopsis: "Tezos/Protocol: protocol specific library for `tezos-client`"

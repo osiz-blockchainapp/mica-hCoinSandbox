@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 include Tezos_stdlib
-module Error_monad = Tezos_error_monad.Error_monad
+include Tezos_error_monad
 include Tezos_rpc
 include Tezos_clic
 include Tezos_crypto

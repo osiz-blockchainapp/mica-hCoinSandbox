@@ -359,7 +359,7 @@ module Prefix = struct
   let context_hash = "\079\199" (* Co(52) *)
 
   (* 20 *)
-  let ed25519_public_key_hash = "\002\148\151" (* tz1(36) *)
+  let ed25519_public_key_hash = "\002\164\060" (* tz1(36) *)
 
   let secp256k1_public_key_hash = "\006\161\161" (* tz2(36) *)
 

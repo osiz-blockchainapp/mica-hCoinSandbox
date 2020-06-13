@@ -271,7 +271,7 @@ The following ``test_example.py`` is the ``pytest`` counterpart of the first exa
         def test_wait_sync_proto(self, sandbox):
             clients = sandbox.all_clients()
             for client in clients:
-                proto = "PsBabyM1eUXZseaJdmXFApDSBqj8YBfwELoxZHHW77EMcAbbwAS"
+                proto = "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK"
                 assert utils.check_protocol(client, proto)
 
         def test_transfer(self, sandbox, session):
@@ -347,11 +347,11 @@ Adding a test
   layers structure. API shouldn't rely testing constants (``tools/constant.py``
   or ``tools/paths.py``).
 
-Testing on a production branch (``zeronet``, ``mainnet``,...)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Testing on ``zeronet``, ``alphanet``,...
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 On ``master``, protocol alpha is named
-``PsBabyM1eUXZseaJdmXFApDSBqj8YBfwELoxZHHW77EMcAbbwAS``, and deamons binary
+``ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK``, and deamons binary
 name are suffixed with ``alpha`` (``tezos-baker-alpha``,
 ``tezos-endorser-alpha``...). However, on *production* branches, an actual
 hash of the protocol is used, and a shortened string is used to specify

@@ -77,6 +77,11 @@ module Crypto = struct
     P2p_io_scheduler.read_full ?canceler ~len:header_length fd header_buf
     >>=? fun () ->
     let encrypted_length = TzEndian.get_uint16 header_buf 0 in
+    (* Ciphertexts have at least length 16. *)
+    fail_unless
+      (encrypted_length >= 16)
+      P2p_errors.Invalid_incoming_ciphertext_size
+    >>=? fun () ->
     let buf_length = encrypted_length + Crypto_box.boxzerobytes in
     let buf = Bytes.make buf_length '\x00' in
     P2p_io_scheduler.read_full
@@ -124,6 +129,35 @@ module Connection_message = struct
     version : Network_version.t;
   }
 
+  let mainnet_stage2_version_encoding =
+    (* minimal ugly hack for migrating from stage1 node. *)
+    let open Data_encoding in
+    conv
+      (fun v ->
+        (* Only announce the singleton, we don't want to speak to original
+            node anymore. *)
+        [v])
+      (function
+        | [] ->
+            (* Unexpected value, let the version-selection algorithm
+               reject the connection by returning a dummy value. *)
+            {
+              Network_version.chain_name =
+                Distributed_db_version.incompatible_chain_name;
+              distributed_db_version = Distributed_db_version.zero;
+              p2p_version = P2p_version.zero;
+            }
+        | [v] ->
+            (* This is a announce by a stage2 node or an original node.
+               Original node will be later kicked by the
+               version-selection algorithm. *)
+            v
+        | v :: _ ->
+            (* This is a announce by a stage1 node, we can safely
+               ignore the rest of the list. *)
+            v)
+      (Variable.list Network_version.encoding)
+
   let encoding =
     let open Data_encoding in
     conv
@@ -138,7 +172,7 @@ module Connection_message = struct
          (req "pubkey" Crypto_box.public_key_encoding)
          (req "proof_of_work_stamp" Crypto_box.nonce_encoding)
          (req "message_nonce" Crypto_box.nonce_encoding)
-         (req "version" Network_version.encoding))
+         (req "version" mainnet_stage2_version_encoding))
 
   let write ~canceler fd message =
     let encoded_message_len = Data_encoding.Binary.length encoding message in

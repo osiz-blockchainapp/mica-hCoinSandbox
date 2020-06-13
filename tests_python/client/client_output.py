@@ -137,17 +137,19 @@ class HashResult:
         pattern = r'''Raw packed data: ?(0x[0-9a-f]*)
 Script-expression-ID-Hash: ?(\w*)
 Raw Script-expression-ID-Hash: ?(\w*)
-.*
+Ledger Blake2b hash: ?(\w*)
 Raw Sha256 hash: ?(\w*)
-Raw Sha512 hash: ?(\w*)'''
+Raw Sha512 hash: ?(\w*)
+Gas remaining: ?(\w*)'''
         match = re.search(pattern, client_output)
         if match is None:
             raise InvalidClientOutput(client_output)
         self.packed = match.groups()[0]
         self.hash = match.groups()[1]
-        self.blake2b = match.groups()[2]
-        self.sha256 = match.groups()[3]
-        self.sha512 = match.groups()[4]
+        self.raw_hash = match.groups()[2]
+        self.blake2b = match.groups()[3]
+        self.sha256 = match.groups()[4]
+        self.sha512 = match.groups()[5]
 
 
 class SignatureResult:

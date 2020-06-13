@@ -18,7 +18,6 @@ depends: [
   "tezos-client-commands"
 ]
 build: [
-  ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+  [ "dune" "build" "-p" name "-j" jobs ]
 ]
 synopsis: "Tezos/Protocol: protocol-specific commands for `tezos-client`"

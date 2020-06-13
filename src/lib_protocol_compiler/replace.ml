@@ -24,7 +24,6 @@
 (*****************************************************************************)
 
 module StringMap = Map.Make (String)
-open Re
 
 let regexp = Str.regexp "%%[^%]*%%"
 
@@ -56,7 +55,7 @@ let warning_message =
 ;
 ;        /!\ /!\ Do not modify this file /!\ /!\
 ;
-; but the original template in `tezos-protocol-compiler`
+; but the original template in `micash-protocol-compiler`
 ;
 
 |}
@@ -126,7 +125,7 @@ let read_proto destination =
   | Error err ->
       Format.kasprintf
         Pervasives.failwith
-        "Failed to read TEZOS_PROTOCOL in %s:@ %a"
+        "Failed to read micash_PROTOCOL in %s:@ %a"
         source_dir
         pp_print_error
         err

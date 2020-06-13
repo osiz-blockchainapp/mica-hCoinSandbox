@@ -3,5 +3,5 @@
  (libraries cstruct rresult lmdb alcotest))
 
 (alias
- (name    runtest)
+ (name    runtest-lmdb)
  (action  (run %{exe:test.exe})))

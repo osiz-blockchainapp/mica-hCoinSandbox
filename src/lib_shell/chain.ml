@@ -113,11 +113,13 @@ let locked_set_head chain_store data block live_blocks live_operations =
      when this TODO is resolved. *)
   Lwt.return
     {
-      data with
       current_head = block;
       current_mempool = Mempool.empty;
       live_blocks;
       live_operations;
+      save_point = data.save_point;
+      caboose = data.caboose;
+      test_chain = data.test_chain;
     }
 
 let set_head chain_state block =

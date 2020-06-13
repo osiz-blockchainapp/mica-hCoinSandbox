@@ -59,8 +59,8 @@ endorse.
 In the network, rights for baking and endorsing are randomly assigned
 to delegates proportionally to the number of rolls they have been
 delegated.
-A roll is just a block of 8kꜩ and all computations with rolls are
-rounded to the nearest lower integer e.g. if you have 15kꜩ it amounts
+A roll is just a block of 10kꜩ and all computations with rolls are
+rounded to the nearest lower integer e.g. if you have 16kꜩ it amounts
 to 1 roll.
 
 When you obtain coins from :ref:`the faucet<faucet>`, if you
@@ -111,7 +111,7 @@ The number of active rolls can be computed with two RPCs, first we
 list all the active delegates with ``delegates?active``, then we sum
 all their ``stacking_balance`` and we simply divide by the size of a
 roll, 10kꜩ.
-At the time of writing, on Betanet the number of active rolls is ~30k
+At the time of writing, on Mainnet the number of active rolls is ~30k
 so for each block we know that the chance that we get selected for
 baking is ``1/30k`` while for endorsing is 32 times that.
 Given that every draw is with replacement, the distribution that
@@ -279,8 +279,8 @@ Docker
 The docker image runs the daemons by default for all your keys.
 To know if you baked, just run::
 
-    ./babylonnet.sh baker log
-    ./babylonnet.sh endorser log
+    ./alphanet.sh baker log
+    ./alphanet.sh endorser log
 
 You should see lines such as::
 

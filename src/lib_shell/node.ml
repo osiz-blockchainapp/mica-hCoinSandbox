@@ -316,7 +316,7 @@ let check_and_fix_storage_consistency state =
       Chain.head chain_state >>= fun block -> check_block 500 chain_state block)
     chains
 
-let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
+let create ?(sandboxed = false) ~singleprocess
     { genesis;
       store_root;
       context_root;
@@ -344,12 +344,7 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess
   else
     init
       (External
-         {
-           context_root;
-           protocol_root;
-           process_path = Sys.executable_name;
-           sandbox_parameters;
-         })
+         {context_root; protocol_root; process_path = Sys.executable_name})
     >>=? fun validator_process ->
     let commit_genesis =
       Block_validator_process.commit_genesis

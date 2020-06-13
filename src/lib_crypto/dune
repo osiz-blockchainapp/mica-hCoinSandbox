@@ -1,10 +1,12 @@
 (library
  (name tezos_crypto)
  (public_name tezos-crypto)
- (flags (:standard -open Tezos_stdlib
+ (flags (:standard -safe-string
+                   -open Tezos_stdlib
                    -open Tezos_data_encoding
                    -open Tezos_error_monad
-                   -open Tezos_rpc))
+                   -open Tezos_rpc
+                   ))
  (libraries tezos-stdlib
             tezos-data-encoding
             tezos-error-monad

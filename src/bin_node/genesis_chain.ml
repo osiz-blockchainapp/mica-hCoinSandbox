@@ -26,11 +26,11 @@
 
 let genesis : State.Chain.genesis =
   {
-    time = Time.Protocol.of_notation_exn "2019-11-28T13:02:13Z";
+    time = Time.Protocol.of_notation_exn "2018-06-30T16:07:32Z";
     block =
       Block_hash.of_b58check_exn
-        "BLockGenesisGenesisGenesisGenesisGenesisd6f5afWyME7";
+        "BLockGenesisGenesisGenesisGenesisGenesisf79b5d1CoW2";
     protocol =
       Protocol_hash.of_b58check_exn
-        "PtYuensgYBb3G3x1hLLbCmcav8ue8Kyd2khADcL5LsT5R1hcXex";
+        "Ps9mPmXaRzmzk35gbAYNCAw6UXdE2qoABTHbN2oEEc1qM7CwT9P";
   }

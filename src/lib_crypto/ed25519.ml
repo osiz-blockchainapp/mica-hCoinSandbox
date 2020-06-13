@@ -43,7 +43,7 @@ module Public_key_hash = struct
   end
 end
 
-let () = Base58.check_encoded_prefix Public_key_hash.b58check_encoding "ME" 36
+let () = Base58.check_encoded_prefix Public_key_hash.b58check_encoding "Mi1" 36
 
 open Hacl
 

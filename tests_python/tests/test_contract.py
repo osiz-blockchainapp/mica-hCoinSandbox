@@ -39,8 +39,7 @@ class TestManager:
         path = f'{CONTRACT_PATH}/entrypoints/manager.tz'
         pubkey = constants.IDENTITIES['bootstrap2']['identity']
         originate(client, session, path, f'"{pubkey}"', 1000)
-        originate(client, session, path, f'"{pubkey}"', 1000,
-                  contract_name="manager2")
+        originate(client, session, path, f'"{pubkey}"', 1000, contract_name="manager2")
 
     def test_delegatable_origination(self, client, session):
         path = f'{CONTRACT_PATH}/entrypoints/delegatable_target.tz'
@@ -97,8 +96,7 @@ class TestManager:
         balance_bootstrap = client.get_mutez_balance('bootstrap2')
         amount = 10.001
         amount_mutez = utils.mutez_of_tez(amount)
-        client.transfer(amount, 'bootstrap2', 'manager',
-                        ['--gas-limit', '15285'])
+        client.transfer(amount, 'bootstrap2', 'manager', ['--gas-limit', '15285'])
         client.bake('bootstrap5', BAKE_ARGS)
         new_balance = client.get_mutez_balance('manager')
         new_balance_bootstrap = client.get_mutez_balance('bootstrap2')
@@ -114,11 +112,11 @@ class TestManager:
         amount = 10.1
         amount_mutez = utils.mutez_of_tez(amount)
         client.transfer(amount, 'manager', 'bootstrap2',
-                        ['--gas-limit', '36558'])
+                        ['--gas-limit', '26183'])
         client.bake('bootstrap5', BAKE_ARGS)
         new_balance = client.get_mutez_balance('manager')
         new_balance_bootstrap = client.get_mutez_balance('bootstrap2')
-        fee = 0.004001
+        fee = 0.002931
         fee_mutez = utils.mutez_of_tez(fee)
         assert balance - amount_mutez == new_balance
         assert (balance_bootstrap + amount_mutez - fee_mutez
@@ -131,12 +129,12 @@ class TestManager:
         amount = 10
         amount_mutez = utils.mutez_of_tez(amount)
         client.transfer(amount, 'manager', 'manager2',
-                        ['--gas-limit', '44659'])
+                        ['--gas-limit', '44625'])
         client.bake('bootstrap5', BAKE_ARGS)
         new_balance = client.get_mutez_balance('manager')
         new_balance_dest = client.get_mutez_balance('manager2')
         new_balance_bootstrap = client.get_mutez_balance('bootstrap2')
-        fee = 0.004811
+        fee = 0.004804
         fee_mutez = utils.mutez_of_tez(fee)
         assert balance_bootstrap - fee_mutez == new_balance_bootstrap
         assert balance - amount_mutez == new_balance
@@ -159,7 +157,8 @@ class TestManager:
         client.transfer(0, 'manager', 'target',
                         ['--entrypoint', 'add_left',
                          '--arg', arg,
-                         '--burn-cap', '0.067'])
+                         '--burn-cap', '0.068'
+                        ])
         client.bake('bootstrap5', BAKE_ARGS)
         client.transfer(0, 'manager', 'target',
                         ['--entrypoint', 'mem_left',
@@ -310,7 +309,6 @@ class TestChainId:
                         ['--arg', f'Pair {operation} \"{signature}\"'])
         client.bake('bootstrap5', BAKE_ARGS)
 
-
 @pytest.mark.contract
 class TestBigMapToSelf:
 
@@ -321,93 +319,3 @@ class TestBigMapToSelf:
 
     def test_big_map_to_self_transfer(self, client):
         client.transfer(0, 'bootstrap2', "big_map_to_self", [])
-
-
-@pytest.mark.contract
-class TestComparablePairs:
-
-    def test_comparable_pair(self, client):
-        # tests that comb pairs are comparable and that the order is the
-        # expected one
-        client.typecheck_data('{}', '(set (pair nat string))')
-        client.typecheck_data('{Pair 0 "foo"}', '(set (pair nat string))')
-        client.typecheck_data('{Pair 0 "foo"; Pair 1 "bar"}',
-                              '(set (pair nat string))')
-        client.typecheck_data('{Pair 0 "bar"; Pair 0 "foo"; \
-                                Pair 1 "bar"; Pair 1 "foo"}',
-                              '(set (pair nat string))')
-        client.typecheck_data('{}', '(set (pair nat (pair string bytes)))')
-
-        client.typecheck_data('{}', '(map (pair nat string) unit)')
-        client.typecheck_data('{Elt (Pair 0 "foo") Unit}',
-                              '(map (pair nat string) unit)')
-        client.typecheck_data('{Elt (Pair 0 "foo") Unit; \
-                                Elt (Pair 1 "bar") Unit}',
-                              '(map (pair nat string) unit)')
-        client.typecheck_data('{Elt (Pair 0 "bar") Unit; \
-                                Elt (Pair 0 "foo") Unit; \
-                                Elt (Pair 1 "bar") Unit; \
-                                Elt (Pair 1 "foo") Unit}',
-                              '(map (pair nat string) unit)')
-        client.typecheck_data('{}',
-                              '(map (pair nat (pair string bytes)) unit)')
-
-        client.typecheck_data('{}', '(big_map (pair nat string) unit)')
-        client.typecheck_data('{Elt (Pair 0 "foo") Unit}',
-                              '(big_map (pair nat string) unit)')
-        client.typecheck_data('{Elt (Pair 0 "foo") Unit; \
-                                Elt (Pair 1 "bar") Unit}',
-                              '(big_map (pair nat string) unit)')
-        client.typecheck_data('{Elt (Pair 0 "bar") Unit; \
-                                Elt (Pair 0 "foo") Unit; \
-                                Elt (Pair 1 "bar") Unit; \
-                                Elt (Pair 1 "foo") Unit}',
-                              '(big_map (pair nat string) unit)')
-        client.typecheck_data('{}',
-                              '(big_map (pair nat (pair string bytes)) unit)')
-
-    def test_order_of_pairs(self, client):
-        # tests that badly-ordered set literals are rejected
-        utils.check_typecheck_data_failure(
-            client, '{Pair 0 "foo"; Pair 0 "bar"}', '(set (pair nat string))')
-        utils.check_typecheck_data_failure(
-            client, '{Pair 1 "bar"; Pair 0 "foo"}', '(set (pair nat string))')
-
-    def test_non_comparable_non_comb_pair(self, client):
-        # tests that non-comb pairs are rejected by the typechecker
-        utils.check_typecheck_data_failure(
-            client, '{}', '(set (pair (pair nat nat) nat))')
-
-    # This should be moved to test_contract_opcodes.py once MR !1261 is merged
-    @pytest.mark.parametrize(
-        "contract,param,storage,expected",
-        [   # FORMAT: assert_output contract_file storage input expected_result
-            # Mapping over maps
-            ('map_map_sideeffect.tz',
-             '(Pair {} 0)', '10', '(Pair {} 0)'),
-            ('map_map_sideeffect.tz',
-             '(Pair { Elt "foo" 1 } 1)', '10', '(Pair { Elt "foo" 11 } 11)'),
-            ('map_map_sideeffect.tz',
-             '(Pair { Elt "bar" 5 ; Elt "foo" 1 } 6)', '15',
-             '(Pair { Elt "bar" 20 ; Elt "foo" 16 } 36)')
-        ])
-    def test_map_map_sideeffect(self,
-                                client,
-                                contract,
-                                param,
-                                storage,
-                                expected):
-        contract = f'{CONTRACT_PATH}/opcodes/{contract}'
-        run_script_res = client.run_script(contract, param, storage)
-        assert run_script_res.storage == expected
-
-
-class TestTypecheckingErrors:
-    def test_big_map_arity_error(self, client):
-        def cmd():
-            client.typecheck(f'{CONTRACT_PATH}/illtyped/big_map_arity.tz')
-
-        utils.check_run_failure(
-            cmd,
-            'primitive EMPTY_BIG_MAP expects 2 arguments but is given 1.'
-        )

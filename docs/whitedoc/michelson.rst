@@ -3,11 +3,7 @@
 Michelson: the language of Smart Contracts in Tezos
 ===================================================
 
-This specification gives a detailed formal semantics of the Michelson
-language, and a short explanation of how smart contracts are executed
-and interact in the blockchain.
-
-The language is stack-based, with high level data types and primitives,
+The language is stack-based, with high level data types and primitives
 and strict static type checking. Its design cherry picks traits from
 several language families. Vigilant readers will notice direct
 references to Forth, Scheme, ML and Cat.
@@ -18,154 +14,30 @@ previous instruction, and rewrites it for the next one. The stack
 contains both immediate values and heap allocated structures. All values
 are immutable and garbage collected.
 
-The types of the input and output stack are fixed and monomorphic,
+A Michelson program receives as input a stack containing a single pair whose
+first element is an input value and second element the content of a storage
+space. It must return a stack containing a single pair whose first element is
+a list of internal operations, and second element the new contents of the
+storage space. Alternatively, a Michelson program can fail, explicitly using
+a specific opcode, or because something went wrong that could not be caught
+by the type system (e.g. division by zero, gas exhaustion).
+
+The types of the input, output and storage are fixed and monomorphic,
 and the program is typechecked before being introduced into the system.
 No smart contract execution can fail because an instruction has been
 executed on a stack of unexpected length or contents.
 
 This specification gives the complete instruction set, type system and
 semantics of the language. It is meant as a precise reference manual,
-not an easy introduction. Even though, some examples are provided at
-the end of the document and can be read first or at the same time as
-the specification. The document also starts with a less formal
-explanation of the context: how Michelson code interacts with the
-blockchain.
+not an easy introduction. Even though, some examples are provided at the
+end of the document and can be read first or at the same time as the
+specification.
 
-Semantics of smart contracts and transactions
----------------------------------------------
+Semantics
+---------
 
-The Tezos ledger currently has two types of accounts that can hold
-tokens (and be the destinations of transactions).
-
-  - An implicit account is a non programmable account, whose tokens
-    are spendable and delegatable by a public key. Its address is
-    directly the public key hash, and starts with ``tz1``, ``tz2`` or
-    ``tz3``.
-  - A smart contract is a programmable account. A transaction to such
-    an address can provide data, and can fail for reasons decided by
-    its Michelson code. Its address is a unique hash that depends on
-    the operation that led to its creation, and starts with ``KT1``.
-
-From Michelson, they are indistinguishable. A safe way to think about
-this is to consider that implicit accounts are smart contracts that
-always succeed to receive tokens, and does nothing else.
-
-Intra-transaction semantics
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Alongside their tokens, smart contracts keep a piece of storage. Both
-are ruled by a specific logic specified by a Michelson program. A
-transaction to smart contract will provide an input value and in
-option some tokens, and in return, the smart contract can modify its
-storage and transfer its tokens.
-
-The Michelson program receives as input a stack containing a single
-pair whose first element is an input value and second element the
-content of the storage space. It must return a stack containing a
-single pair whose first element is the list of internal operations
-that it wants to emit, and second element is the new contents of the
-storage space. Alternatively, a Michelson program can fail, explicitly
-using a specific opcode, or because something went wrong that could
-not be caught by the type system (e.g. gas exhaustion).
-
-A bit of polymorphism can be used at contract level, with a
-lightweight system of named entrypoints: instead of an input value,
-the contract can be called with an entrypoint name and an argument,
-and these two component are transformed automatically in a simple and
-deterministic way to an input value. This feature is available both
-for users and from Michelson code. See the dedicated section.
-
-Inter-transaction semantics
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-An operation included in the blockchain is a sequence of "external
-operations" signed as a whole by a source address. These operations
-are of three kinds:
-
-  - Transactions to transfer tokens to implicit accounts or tokens and
-    parameters to a smart contract (or, optionally, to a specified
-    entrypoint of a smart contract).
-  - Originations to create new smart contracts from its Michelson
-    source code, an initial amount of tokens transferred from the
-    source, and an initial storage contents.
-  - Delegations to assign the tokens of the source to the stake of
-    another implicit account (without transferring any tokens).
-
-Smart contracts can also emit "internal operations". These are run
-in sequence after the external transaction completes, as in the
-following schema for a sequence of two external operations.
-
-::
-
-    +------+----------------+-------+----------------+
-    | op 1 | internal ops 1 |  op 2 | internal ops 2 |
-    +------+----------------+-------+----------------+
-
-Smart contracts called by internal transactions can in turn also emit
-internal operation. The interpretation of the internal operations
-of a given external operation use a queue, as in the following
-example, also with two external operations.
-
-::
-
-   +-----------+---------------+--------------------------+
-   | executing | emissions     | resulting queue          |
-   +-----------+---------------+--------------------------+
-   | op 1      | 1a, 1b, 1c    | 1a, 1b, 1c               |
-   | op 1a     | 1ai, 1aj      | 1b, 1c, 1ai, 1aj         |
-   | op 1b     | 1bi           | 1c, 1ai, 1aj, 1bi        |
-   | op 1c     |               | 1ai, 1aj, 1bi            |
-   | op 1ai    |               | 1aj, 1bi                 |
-   | op 1aj    |               | 1bi                      |
-   | op 1bi    |               |                          |
-   | op 2      | 2a, 2b        | 2a, 2b                   |
-   | op 2a     | 2ai           | 2b, 2ai                  |
-   | op 2b     |               | 2ai                      |
-   | op 2ai    | 2ai1          | 2ai1                     |
-   | op 2a1    | 2ai2          | 2ai2                     |
-   | op 2a2    | 2ai3          | 2ai3                     |
-   | op 2a3    |               |                          |
-   +-----------+---------------+--------------------------+
-
-Failures
-~~~~~~~~
-
-All transactions can fail for a few reasons, mostly:
-
-  - Not enough tokens in the source to spend the specified amount.
-  - The script took too many execution steps.
-  - The script failed programmatically using the ``FAILWITH`` instruction.
-
-External transactions can also fail for these additional reasons:
-
-  - The signature of the external operations was wrong.
-  - The code or initial storage in an origination did not typecheck.
-  - The parameter in a transfer did not typecheck.
-  - The destination did not exist.
-  - The specified entrypoint did not exist.
-
-All these errors cannot happen in internal transactions, as the type
-system catches them at operation creation time. In particular,
-Michelson has two types to talk about other accounts: ``address`` and
-``contract t``. The ``address`` type merely gives the guarantee that
-the value has the form of a Tezos address. The ``contract t`` type, on
-the other hand, guarantees that the value is indeed a valid, existing
-account whose parameter type is ``t``. To make a transaction from
-Michelson, a value of type ``contract t`` must be provided, and the
-type system checks that the argument to the transaction is indeed of
-type ``t``. Hence, all transactions made from Michelson are well
-formed by construction.
-
-In any case, when a failure happens, either total success or total
-failure is guaranteed. If a transaction (internal or external) fails,
-then the whole sequence fails and all the effects up to the failure
-are reverted. These transactions can still be included in blocks, and
-the transaction fees given to the implicit account who baked the block.
-
-Language semantics
-------------------
-
-This specification explains in a symbolic way the computation performed by the
+This specification gives a detailed formal semantics of the Michelson
+language. It explains in a symbolic way the computation performed by the
 Michelson interpreter on a given program and initial stack to produce
 the corresponding resulting stack. The Michelson interpreter is a pure
 function: it only builds a result stack from the elements of an initial
@@ -276,7 +148,7 @@ The domain of instruction names, symbolic constants and data
 constructors is fixed by this specification. Michelson does not let the
 programmer introduce its own types.
 
-Be aware that the syntax used in the specification may differ from
+Be aware that the syntax used in the specification may differ a bit from
 the :ref:`concrete syntax <ConcreteSyntax>`. In particular
 some instructions are annotated with types that are not present in the
 concrete language because they are synthesized by the typechecker.
@@ -374,7 +246,7 @@ Here are the notations for meta type variables:
 Typing rules
 ~~~~~~~~~~~~
 
-The system is syntax directed, meaning that it defines a single
+The system is syntax directed, which means here that it defines a single
 typing rule for each syntax construct. A typing rule restricts the type
 of input stacks that are authorized for this syntax construct, links the
 output type to the input type, and links both of them to the
@@ -407,7 +279,7 @@ with ``by``.
 
 ::
 
-    { PUSH nat 5 ; ADD ; PUSH nat 10 ; MUL }
+    { PUSH nat 5 ; ADD ; PUSH nat 10 ; SWAP ; MUL }
     :: [ nat : [] -> nat : [] ]
        by { PUSH nat 5 ; ADD }
           :: [ nat : [] -> nat : [] ]
@@ -416,13 +288,17 @@ with ``by``.
                    by 5 :: nat
             and ADD
                 :: [ nat : nat : [] -> nat : [] ]
-      and { PUSH nat 10 ; MUL }
+      and { PUSH nat 10 ; SWAP ; MUL }
           :: [ nat : [] -> nat : [] ]
              by PUSH nat 10
                 :: [ nat : [] -> nat : nat : [] ]
                    by 10 :: nat
-            and MUL
+            and { SWAP ; MUL }
                 :: [ nat : nat : [] -> nat : [] ]
+                   by SWAP
+                      :: [ nat : nat : [] -> nat : nat : [] ]
+                  and MUL
+                      :: [ nat : nat : [] -> nat : [] ]
 
 Producing such a typing derivation can be done in a number of manners,
 such as unification or abstract interpretation. In the implementation of
@@ -453,38 +329,39 @@ Core data types and notations
    ``False``.
 
 -  ``unit``: The type whose only value is ``Unit``, to use as a
-   placeholder when some result or parameter is not necessary. For
+   placeholder when some result or parameter is non necessary. For
    instance, when the only goal of a contract is to update its storage.
 
 -  ``list (t)``: A single, immutable, homogeneous linked list, whose
-   elements are of type ``(t)``, and that we write ``{}`` for the empty
+   elements are of type ``(t)``, and that we note ``{}`` for the empty
    list or ``{ first ; ... }``. In the semantics, we use chevrons to
-   denote a subsequence of elements. For instance: ``{ head ; <tail> }``.
+   denote a subsequence of elements. For instance ``{ head ; <tail> }``.
 
 -  ``pair (l) (r)``: A pair of values ``a`` and ``b`` of types ``(l)``
    and ``(r)``, that we write ``(Pair a b)``.
 
--  ``option (t)``: Optional value of type ``(t)`` that we write ``None``
+-  ``option (t)``: Optional value of type ``(t)`` that we note ``None``
    or ``(Some v)``.
 
 -  ``or (l) (r)``: A union of two types: a value holding either a value
    ``a`` of type ``(l)`` or a value ``b`` of type ``(r)``, that we write
    ``(Left a)`` or ``(Right b)``.
 
--  ``set (t)``: Immutable sets of values of type ``(t)`` that we write as
+-  ``set (t)``: Immutable sets of values of type ``(t)`` that we note as
    lists ``{ item ; ... }``, of course with their elements unique, and
    sorted.
 
 -  ``map (k) (t)``: Immutable maps from keys of type ``(k)`` of values
-   of type ``(t)`` that we write ``{ Elt key value ; ... }``, with keys
+   of type ``(t)`` that we note ``{ Elt key value ; ... }``, with keys
    sorted.
 
 -  ``big_map (k) (t)``: Lazily deserialized maps from keys of type
-   ``(k)`` of values of type ``(t)`` that we write ``{ Elt key value ; ... }``,
-   with keys sorted.  These maps should be used if one intends to store
+   ``(k)`` of values of type ``(t)`` that we note ``{ Elt key value ; ... }``,
+   with keys sorted.  These maps should be used if you intend to store
    large amounts of data in a map. They have higher gas costs than
-   standard maps as data is lazily deserialized. A ``big_map`` cannot
-   appear inside another ``big_map``.
+   standard maps as data is lazily deserialized.  You are limited to a
+   single ``big_map`` per program, which must appear on the left hand
+   side of a pair in the contract's storage.
 
 Core instructions
 -----------------
@@ -497,7 +374,7 @@ Control structures
    'a :: \_ -> \_
 
    This special instruction aborts the current program exposing the top
-   element of the stack in its error message (first rule below). It makes the
+   of the stack in its error message (first rule below). It makes the
    output useless since all subsequent instructions will simply ignore
    their usual semantics to propagate the failure up to the main result
    (second rule below). Its type is thus completely generic.
@@ -558,7 +435,7 @@ Control structures
     > LOOP_LEFT body / (Left a) : S  =>  body ; LOOP_LEFT body / a : S
     > LOOP_LEFT body / (Right b) : S  =>  b : S
 
--  ``DIP code``: Runs code protecting the top element of the stack.
+-  ``DIP code``: Runs code protecting the top of the stack.
 
 ::
 
@@ -566,18 +443,6 @@ Control structures
        iff   code :: [ 'A -> 'C ]
 
     > DIP code / x : S  =>  x : S'
-        where    code / S  =>  S'
-
-- ``DIP n code``: Runs code protecting the ``n`` topmost elements of
-   the stack. In particular, ``DIP 0 code`` is equivalent to ``code``
-   and ``DIP 1 code`` is equivalent to ``DIP code``.
-
-::
-
-    :: 'a{1} : ... : 'a{n} : 'A   ->   'a{1} : ... : 'a{n} : 'B
-       iff   code :: [ 'A -> 'B ]
-
-    > DIP n code / x{1} : ... : x{n} : S  =>  x{1} : ... : x{n} : S'
         where    code / S  =>  S'
 
 -  ``EXEC``: Execute a function from the stack.
@@ -588,17 +453,6 @@ Control structures
 
     > EXEC / a : f : S  =>  r : S
         where f / a : []  =>  r : []
-
--  ``APPLY``: Partially apply a tuplified function from the stack.
-   Such a lambda is storable, and thus values that cannot be stored
-   (values of type ``operation``, ``contract _`` and ``big map _ _``)
-   cannot be captured by ``APPLY`` (cannot appear in ``'a``).
-
-::
-
-    :: 'a : lambda (pair 'a 'b) 'c : 'C   ->   lambda 'b 'c : 'C
-
-    > APPLY / a : f : S  => { PUSH t v ; PAIR ; code } : S
 
 Stack operations
 ~~~~~~~~~~~~~~~~
@@ -611,17 +465,7 @@ Stack operations
 
     > DROP / _ : S  =>  S
 
-- ``DROP n``: Drop the `n` topmost elements of the stack. In
-  particular, ``DROP 0`` is a noop and ``DROP 1`` is equivalent to
-  ``DROP``.
-
-::
-
-   :: 'a{1} : ... : 'a{n} : 'A   ->   'A
-
-   > DROP n / x{1} : ... : x{n} : S  =>  S
-
--  ``DUP``: Duplicate the top element of the stack.
+-  ``DUP``: Duplicate the top of the stack.
 
 ::
 
@@ -636,26 +480,6 @@ Stack operations
     :: 'a : 'b : 'A   ->   'b : 'a : 'A
 
     > SWAP / x : y : S  =>  y : x : S
-
-- ``DIG n``: Take the element at depth ``n`` of the stack and move it
-  on top. The element on top of the stack is at depth ``0`` so that
-  ``DIG 0`` is a no-op and ``DIG 1`` is equivalent to ``SWAP``.
-
-::
-
-    :: 'a{1} : ... : 'a{n} : 'b : 'A   ->   'b : 'a{1} : ... : 'a{n} : 'A
-
-    > DIG n / x{1} : ... : x{n} : y : S  =>  y : x{1} : ... : x{n} : S
-
-- ``DUG n``: Place the element on top of the stack at depth ``n``. The
-  element on top of the stack is at depth ``0`` so that ``DUG 0`` is a
-  no-op and ``DUG 1`` is equivalent to ``SWAP``.
-
-::
-
-    :: 'b : 'a{1} : ... : 'a{n} : 'A   ->   'a{1} : ... : 'a{n} : 'b : 'A
-
-    > DUG n / y : x{1} : ... : x{n} : S  =>  x{1} : ... : x{n} : y : S
 
 -  ``PUSH 'a x``: Push a constant value of a given type onto the stack.
 
@@ -674,8 +498,8 @@ Stack operations
 
     > UNIT / S  =>  Unit : S
 
--  ``LAMBDA 'a 'b code``: Push a lambda with the given parameter type `'a` and return
-   type `'b` onto the stack.
+-  ``LAMBDA 'a 'b code``: Push a lambda with given parameter and return
+   types onto the stack.
 
 ::
 
@@ -694,7 +518,7 @@ result of ``COMPARE`` is ``0`` if the top two elements of the stack are
 equal, negative if the first element in the stack is less than the
 second, and positive otherwise.
 
--  ``EQ``: Checks that the top element of the stack is equal to zero.
+-  ``EQ``: Checks that the top of the stack EQuals zero.
 
 ::
 
@@ -704,7 +528,7 @@ second, and positive otherwise.
     > EQ / v : S  =>  False : S
         iff v <> 0
 
--  ``NEQ``: Checks that the top element of the stack is not equal to zero.
+-  ``NEQ``: Checks that the top of the stack does Not EQual zero.
 
 ::
 
@@ -714,7 +538,7 @@ second, and positive otherwise.
     > NEQ / v : S  =>  True : S
         iff v <> 0
 
--  ``LT``: Checks that the top element of the stack is less than zero.
+-  ``LT``: Checks that the top of the stack is Less Than zero.
 
 ::
 
@@ -725,7 +549,7 @@ second, and positive otherwise.
     > LT / v : S  =>  False : S
         iff v >= 0
 
--  ``GT``: Checks that the top element of the stack is greater than zero.
+-  ``GT``: Checks that the top of the stack is Greater Than zero.
 
 ::
 
@@ -736,7 +560,7 @@ second, and positive otherwise.
     > GT / v : S  =>  C / False : S
         iff v <= 0
 
--  ``LE``: Checks that the top element of the stack is less than or equal to
+-  ``LE``: Checks that the top of the stack is Less Than of Equal to
    zero.
 
 ::
@@ -748,7 +572,7 @@ second, and positive otherwise.
     > LE / v : S  =>  False : S
         iff v > 0
 
--  ``GE``: Checks that the top of the stack is greater than or equal to
+-  ``GE``: Checks that the top of the stack is Greater Than of Equal to
    zero.
 
 ::
@@ -801,8 +625,8 @@ Operations on booleans
 Operations on integers and natural numbers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Integers and naturals are arbitrary-precision, meaning that the only size
-limit is gas.
+Integers and naturals are arbitrary-precision, meaning the only size
+limit is fuel.
 
 -  ``NEG``
 
@@ -820,26 +644,6 @@ limit is gas.
     :: int : 'S   ->   nat : 'S
 
     > ABS / x : S  =>  abs (x) : S
-
--  ``ISNAT``
-
-::
-
-    :: int : 'S   ->   option nat : 'S
-
-    > ISNAT / x : S  =>  Some (x) : S
-       iff x >= 0
-
-    > ISNAT / x : S  =>  None : S
-       iff x < 0
-
--  ``INT``
-
-::
-
-    :: nat : 'S   ->   int : 'S
-
-    > INT / x : S  =>  x : S
 
 -  ``ADD``
 
@@ -874,7 +678,7 @@ limit is gas.
 
     > MUL / x : y : S  =>  (x * y) : S
 
--  ``EDIV``: Perform Euclidian division
+-  ``EDIV`` Perform Euclidian division
 
 ::
 
@@ -897,7 +701,7 @@ Bitwise logical operators are also available on unsigned integers.
 
     > OR / x : y : S  =>  (x | y) : S
 
--  ``AND``: (also available when the top operand is signed)
+-  ``AND`` (also available when the top operand is signed)
 
 ::
 
@@ -914,7 +718,11 @@ Bitwise logical operators are also available on unsigned integers.
 
     > XOR / x : y : S  =>  (x ^ y) : S
 
--  ``NOT``: Two's complement
+-  ``NOT`` The return type of ``NOT`` is an ``int`` and not a ``nat``.
+   This is because the sign is also negated. The resulting integer is
+   computed using two's complement. For instance, the boolean negation
+   of ``0`` is ``-1``. To get a natural back, a possibility is to use
+   ``AND`` with an unsigned mask afterwards.
 
 ::
 
@@ -922,14 +730,6 @@ Bitwise logical operators are also available on unsigned integers.
     :: int : 'S   ->   int : 'S
 
     > NOT / x : S  =>  ~x : S
-
-
-The return type of ``NOT`` is an ``int`` and not a ``nat``.  This is
-because the sign is also negated. The resulting integer is computed
-using two's complement. For instance, the boolean negation of ``0`` is
-``-1``. To get a natural back, a possibility is to use ``AND`` with an
-unsigned mask afterwards.
-
 
 -  ``LSL``
 
@@ -1049,20 +849,6 @@ Operations on pairs
 
     > CDR / (Pair _ b) : S  =>  b : S
 
--  ``COMPARE``: Lexicographic comparison.
-
-::
-
-    :: pair 'a 'b : pair 'a 'b : 'S   ->   int : 'S
-
-    > COMPARE / (Pair sa sb) : (Pair ta tb) : S  =>  -1 : S
-        iff COMPARE / sa : ta : S => -1 : S
-    > COMPARE / (Pair sa sb) : (Pair ta tb) : S  =>  1 : S
-        iff COMPARE / sa : ta : S => 1 : S
-    > COMPARE / (Pair sa sb) : (Pair ta tb) : S  =>  r : S
-        iff COMPARE / sa : ta : S => 0 : S
-            COMPARE / sb : tb : S => r : S
-
 Operations on sets
 ~~~~~~~~~~~~~~~~~~
 
@@ -1123,9 +909,7 @@ Operations on sets
        iff body :: [ 'elt : 'A -> 'A ]
 
     > ITER body / {} : S  =>  S
-    > ITER body / { hd ; <tl> } : S  =>  ITER body / { <tl> } : S'
-       iff body / hd : S  =>  S'
-
+    > ITER body / { hd ; <tl> } : S  =>  body; ITER body / hd : { <tl> } : S
 
 -  ``SIZE``: Get the cardinality of the set.
 
@@ -1213,9 +997,8 @@ Operations on maps
        iff   body :: [ (pair 'key 'val) : 'A -> 'b : 'A ]
 
     > MAP body / {} : S  =>  {} : S
-    > MAP body / { Elt k v ; <tl> } : S  =>  { Elt k v' ; <tl'> } : S''
-        where body / Pair k v : S  =>  v' : S'
-        and MAP body / { <tl> } : S'  =>  { <tl'> } : S''
+    > MAP body / { Elt k v ; <tl> } : S  =>  { Elt k (body (Pair k v)) ; <tl'> } : S
+        where MAP body / { <tl> } : S  =>  { <tl'> } : S
 
 -  ``ITER body``: Apply the body expression to each element of a map.
    The body sequence has access to the stack.
@@ -1226,8 +1009,7 @@ Operations on maps
        iff   body :: [ (pair 'elt 'val : 'A) -> 'A ]
 
     > ITER body / {} : S  =>  S
-    > ITER body / { Elt k v ; <tl> } : S  =>  ITER body / { <tl> } : S'
-       iff body / (Pair k v) : S  =>  S'
+    > ITER body / { Elt k v ; <tl> } : S  =>  body ; ITER body / (Pair k v) : { <tl> } : S
 
 -  ``SIZE``: Get the cardinality of the map.
 
@@ -1247,15 +1029,6 @@ The behavior of these operations is the same as if they were normal
 maps, except that under the hood, the elements are loaded and
 deserialized on demand.
 
--  ``EMPTY_BIG_MAP 'key 'val``: Build a new, empty big map from keys of a
-   given type to values of another given type.
-
-   The ``'key`` type must be comparable (the ``COMPARE`` primitive must
-   be defined over it).
-
-::
-
-    :: 'S -> map 'key 'val : 'S
 
 -  ``GET``: Access an element in a ``big_map``, returns an optional value to be
    checked with ``IF_SOME``.
@@ -1280,7 +1053,7 @@ deserialized on demand.
 Operations on optional values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  ``SOME``: Pack a value as an optional value.
+-  ``SOME``: Pack a present optional value.
 
 ::
 
@@ -1337,6 +1110,17 @@ Operations on unions
     > IF_LEFT bt bf / (Left a) : S  =>  bt / a : S
     > IF_LEFT bt bf / (Right b) : S  =>  bf / b : S
 
+-  ``IF_RIGHT bt bf``: Inspect a value of a union.
+
+::
+
+    :: or 'a 'b : 'A   ->   'B
+       iff   bt :: [ 'b : 'A -> 'B]
+             bf :: [ 'a : 'A -> 'B]
+
+    > IF_RIGHT bt bf / (Right b) : S  =>  bt / b : S
+    > IF_RIGHT bt bf / (Left a) : S  =>  bf / a : S
+
 Operations on lists
 ~~~~~~~~~~~~~~~~~~~
 
@@ -1375,10 +1159,9 @@ Operations on lists
     :: (list 'elt) : 'A   ->  (list 'b) : 'A
        iff   body :: [ 'elt : 'A -> 'b : 'A ]
 
+    > MAP body / { a ; <rest> } : S  =>  { body a ; <rest'> } : S
+        where MAP body / { <rest> } : S  =>  { <rest'> } : S
     > MAP body / {} : S  =>  {} : S
-    > MAP body / { a ; <rest> } : S  =>  { b ; <rest'> } : S''
-        where body / a : S  =>  b : S'
-        and MAP body / { <rest> } : S'  =>  { <rest'> } : S''
 
 -  ``SIZE``: Get the number of elements in the list.
 
@@ -1398,9 +1181,8 @@ Operations on lists
 
     :: (list 'elt) : 'A   ->  'A
          iff body :: [ 'elt : 'A -> 'A ]
+    > ITER body / { a ; <rest> } : S  =>  body ; ITER body / a : { <rest> } : S
     > ITER body / {} : S  =>  S
-    > ITER body / { a ; <rest> } : S  =>  ITER body / { <rest> } : S'
-       iff body / a : S  =>  S'
 
 
 Domain specific data types
@@ -1410,20 +1192,17 @@ Domain specific data types
 
 -  ``mutez``: A specific type for manipulating tokens.
 
--  ``address``: An untyped address (implicit account or smart contract).
+-  ``contract 'param``: A contract, with the type of its code.
 
--  ``contract 'param``: A contract, with the type of its code,
-   ``contract unit`` for implicit accounts.
+-  ``address``: An untyped contract address.
 
 -  ``operation``: An internal operation emitted by a contract.
 
--  ``key``: A public cryptographic key.
+-  ``key``: A public cryptography key.
 
--  ``key_hash``: The hash of a public cryptographic key.
+-  ``key_hash``: The hash of a public cryptography key.
 
 -  ``signature``: A cryptographic signature.
-
--  ``chain_id``: An identifier for a chain, used to distinguish the test and the main chains.
 
 Domain specific operations
 --------------------------
@@ -1431,8 +1210,8 @@ Domain specific operations
 Operations on timestamps
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Timestamps can be obtained by the ``NOW`` operation, or retrieved from
-script parameters or globals.
+Current Timestamps can be obtained by the ``NOW`` operation, or
+retrieved from script parameters or globals.
 
 -  ``ADD`` Increment / decrement a timestamp of the given number of
    seconds.
@@ -1545,15 +1324,27 @@ Operations on contracts
 
 ::
 
-    :: option key_hash : mutez : 'g : 'S
+    :: key_hash : option key_hash : bool : bool : mutez : 'g : 'S
        -> operation : address : 'S
 
-Originate a contract based on a literal. The parameters are the
-optional delegate, the initial amount taken from the current
-contract, and the initial storage of the originated contract.
-The contract is returned as a first class value (to be dropped, passed
-as parameter or stored). The ``CONTRACT 'p`` instruction will fail
-until it is actually originated.
+Originate a contract based on a literal. This is currently the only way
+to include transfers inside of an originated contract. The first
+parameters are the manager, optional delegate, then spendable and
+delegatable flags and finally the initial amount taken from the
+currently executed contract. The contract is returned as a first class
+value (to be dropped, passed as parameter or stored).
+The ``CONTRACT 'p`` instruction will fail until it is actually originated.
+
+-  ``CREATE_ACCOUNT``: Forge an account (a contract without code) creation operation.
+
+::
+
+    :: key_hash : option key_hash : bool : mutez : 'S
+       ->   operation : address : 'S
+
+Take as argument the manager, optional delegate, the delegatable flag
+and finally the initial amount taken from the currently executed
+contract.
 
 -  ``TRANSFER_TOKENS``: Forge a transaction.
 
@@ -1576,15 +1367,13 @@ contract, unit for an account.
 
     :: 'S   ->   mutez : 'S
 
--  ``ADDRESS``: Cast the contract to its address.
+-  ``ADDRESS``: Push the address of a contract.
 
 ::
 
     :: contract _ : 'S   ->   address : 'S
 
-    > ADDRESS / addr : S  =>  addr : S
-
--  ``CONTRACT 'p``: Cast the address to the given contract type if possible.
+-  ``CONTRACT 'p``: Push the untyped version of a contract.
 
 ::
 
@@ -1610,7 +1399,7 @@ contract, unit for an account.
 
 -  ``SENDER``: Push the contract that initiated the current
    internal transaction. It may be the ``SOURCE``, but may
-   also be different if the source sent an order to an intermediate
+   also not if the source sent an order to an intermediate
    smart contract, which then called the current contract.
 
 ::
@@ -1643,6 +1432,13 @@ contract, unit for an account.
 Special operations
 ~~~~~~~~~~~~~~~~~~
 
+-  ``STEPS_TO_QUOTA``: Push the remaining steps before the contract
+   execution must terminate.
+
+::
+
+    :: 'S   ->   nat : 'S
+
 -  ``NOW``: Push the timestamp of the block whose validation triggered
    this execution (does not change during the execution of the
    contract).
@@ -1650,13 +1446,6 @@ Special operations
 ::
 
     :: 'S   ->   timestamp : 'S
-
-- ``CHAIN_ID``: Push the chain identifier.
-
-::
-
-    :: 'S   ->   chain_id : 'S
-
 
 Operations on bytes
 ~~~~~~~~~~~~~~~~~~~
@@ -1774,46 +1563,6 @@ Cryptographic primitives
     > COMPARE / x : y : S  =>  1 : S
         iff x > y
 
-Deprecated instructions
-~~~~~~~~~~~~~~~~~~~~~~~
-
-The following instructions are deprecated. The Michelson type-checker
-will reject any contract using them but contracts already originated
-on the blockchain using them will continue to work as before.
-
--  ``CREATE_CONTRACT { storage 'g ; parameter 'p ; code ... }``:
-   Forge a new contract from a literal.
-
-::
-
-    :: key_hash : option key_hash : bool : bool : mutez : 'g : 'S
-       -> operation : address : 'S
-
-See the documentation of the new ``CREATE_CONTRACT`` instruction. The
-first, third, and fourth parameters are ignored.
-
--  ``CREATE_ACCOUNT``: Forge an account creation operation.
-
-::
-
-    :: key_hash : option key_hash : bool : mutez : 'S
-       ->   operation : address : 'S
-
-Takes as argument the manager, optional delegate, the delegatable flag
-and finally the initial amount taken from the currently executed
-contract. This instruction originates a contract with two entrypoints;
-``%default`` of type ``unit`` that does nothing and ``%do`` of type
-``lambda unit (list operation)`` that executes and returns the
-parameter if the sender is the contract's manager.
-
--  ``STEPS_TO_QUOTA``: Push the remaining steps before the contract
-   execution must terminate.
-
-::
-
-    :: 'S   ->   nat : 'S
-
-
 Macros
 ------
 
@@ -1915,17 +1664,21 @@ to increase clarity about illegal states.
 Syntactic Conveniences
 ~~~~~~~~~~~~~~~~~~~~~~
 
-These macros are simply more convenient syntax for various common
+These are macros are simply more convenient syntax for various common
 operations.
 
--  ``DUP n``: A syntactic sugar for duplicating the ``n``\ th element of
+-  ``DII+P code``: A syntactic sugar for working deeper in the stack.
+
+::
+
+    > DII(\rest=I*)P code / S  =>  DIP (DI(\rest)P code) / S
+
+-  ``DUU+P``: A syntactic sugar for duplicating the ``n``\ th element of
    the stack.
 
 ::
 
-    > DUP 1 / S  =>  DUP / S
-    > DUP 2 / S  =>  DIP (DUP) ; SWAP / S
-    > DUP (n+1) / S  =>  DIP n (DUP) ; DIG (n+1) / S
+    > DUU(\rest=U*)P / S  =>  DIP (DU(\rest)P) ; SWAP / S
 
 -  ``P(\left=A|P(\left)(\right))(\right=I|P(\left)(\right))R``: A syntactic sugar
    for building nested pairs.
@@ -1977,13 +1730,12 @@ A typing rule can be inferred:
 
 ::
 
-    > IF_SOME bt bf / S  =>  IF_NONE bf bt / S
+    :: option 'a : 'A   ->   'B
+       iff   bt :: [ 'a : 'A -> 'B]
+             bf :: [ 'A -> 'B]
 
--  ``IF_RIGHT bt bf``: Inspect a value of a union.
-
-::
-
-    > IF_RIGHT bt bf / S  =>  IF_LEFT bf bt / S
+    > IF_SOME / (Some a) : S  =>  bt / a : S
+    > IF_SOME / (None) : S  =>  bf / S
 
 -  ``SET_CAR``: Set the left field of a pair.
 
@@ -2035,13 +1787,12 @@ Concrete syntax
 
 The concrete language is very close to the formal notation of the
 specification. Its structure is extremely simple: an expression in the
-language can only be one of the five following constructs.
+language can only be one of the four following constructs.
 
-1. An integer in decimal notation.
+1. An integer.
 2. A character string.
-3. A byte sequence in hexadecimal notation prefixed by ``0x``.
-4. The application of a primitive to a sequence of expressions.
-5. A sequence of expressions.
+3. The application of a primitive to a sequence of expressions.
+4. A sequence of expressions.
 
 This simple four cases notation is called Micheline.
 
@@ -2131,7 +1882,7 @@ Differences with the formal notation
 The concrete syntax follows the same lexical conventions as the
 specification: instructions are represented by uppercase identifiers,
 type constructors by lowercase identifiers, and constant constructors
-are capitalized.
+are Capitalized.
 
 All domain specific constants are Micheline constants with specific
 formats. Some have two variants accepted by the data type checker: a
@@ -2186,14 +1937,10 @@ line can also be written, using C-like delimiters (``/* ... */``).
 Annotations
 -----------
 
-The annotation mechanism of Michelson provides ways to better track
-data on the stack and to give additional type constraints. Except for
-a single exception specified just after, annotations are only here to
-add constraints, *i.e.* they cannot turn an otherwise rejected program
-into an accepted one. The notable exception to this rule is for
-entrypoints: the `CONTRACT` instruction semantics varies depending on
-its constructor annotation, and some contract origination may fail due
-to invalid entrypoint constructor annotations.
+The annotation mechanism of Michelson provides ways to better track data
+on the stack and to give additional type constraints. Annotations are
+only here to add constraints, *i.e.* they cannot turn an otherwise
+rejected program into an accepted one.
 
 Stack visualization tools like the Michelson's Emacs mode print
 annotations associated with each type in the program, as propagated by
@@ -2238,7 +1985,8 @@ Inner components of composed typed can also be named.
    (pair :point (int :x_pos) (int :y_pos))
 
 Push-like instructions, that act as constructors, can also be given a
-type annotation. The stack type will then have on top a type with a corresponding name.
+type annotation. The stack type will then have a correspondingly named
+type on top.
 
 ::
 
@@ -2268,9 +2016,6 @@ type annotation. The stack type will then have on top a type with a correspondin
 
    EMPTY_MAP :t 'key 'val
    :: 'S -> (map :t 'key 'val) : 'S
-
-   EMPTY_BIG_MAP :t 'key 'val
-   :: 'S -> (big_map :t 'key 'val) : 'S
 
 
 A no-op instruction ``CAST`` ensures the top of the stack has the
@@ -2306,8 +2051,6 @@ The instructions which do not accept any variable annotations are:
 
    DROP
    SWAP
-   DIG
-   DUG
    IF_NONE
    IF_LEFT
    IF_CONS
@@ -2339,7 +2082,6 @@ The instructions which accept at most one variable annotation are:
    MEM
    EMPTY_SET
    EMPTY_MAP
-   EMPTY_BIG_MAP
    UPDATE
    GET
    LAMBDA
@@ -2353,7 +2095,7 @@ The instructions which accept at most one variable annotation are:
    XOR
    NOT
    ABS
-   ISNAT
+   IS_NAT
    INT
    NEG
    EDIV
@@ -2382,7 +2124,6 @@ The instructions which accept at most one variable annotation are:
    SELF
    CAST
    RENAME
-   CHAIN_ID
 
 The instructions which accept at most two variable annotations are:
 
@@ -2480,6 +2221,12 @@ and variable annotations).
    RIGHT %left %right 'a
    :: 'b : 'S -> (or ('a %left) ('b %right)) : 'S
 
+   NONE %some 'a
+   :: 'S -> (option ('a %some))
+
+   Some %some
+   :: 'a : 'S -> (option ('a %some))
+
 To improve readability and robustness, instructions ``CAR`` and ``CDR``
 accept one field annotation. For the contract to type check, the name of
 the accessed field in the destructed pair must match the one given here.
@@ -2508,7 +2255,7 @@ the primitive name and before its potential arguments.
 
 
 Ordering between different kinds of annotations is not significant, but
-ordering among annotations of the same kind is. Annotations of the same
+ordering among annotations of the same kind is. Annotations of a same
 kind must be grouped together.
 
 For instance these two annotated instructions are equivalent:
@@ -2519,7 +2266,7 @@ For instance these two annotated instructions are equivalent:
 
    PAIR %x %y :t @my_pair
 
-An annotation can be empty, in this case it will mean *no annotation*
+An annotation can be empty, in this case is will mean *no annotation*
 and can be used as a wildcard. For instance, it is useful to annotate
 only the right field of a pair instruction ``PAIR % %right`` or to
 ignore field access constraints, *e.g.* in the macro ``UNPPAIPAIR %x1 %
@@ -2658,7 +2405,7 @@ type (which can be changed). For instance the annotated typing rule for
 Special annotations
 ~~~~~~~~~~~~~~~~~~~
 
-The special variable annotations ``@%`` and ``@%%`` can be used on instructions
+The special variable annotations ``@%%`` can be used on instructions
 ``CAR`` and ``CDR``. It means to use the accessed field name (if any) as
 a name for the value on the stack. The following typing rule
 demonstrates their use for instruction ``CAR``.
@@ -2675,7 +2422,7 @@ The special variable annotation ``%@`` can be used on instructions
 ``PAIR``, ``SOME``, ``LEFT``, ``RIGHT``. It means to use the variable
 name annotation in the stack as a field name for the constructed
 element. Two examples with ``PAIR`` follows, notice the special
-treatment of annotations with ``.``.
+treatment of annotations with `.`.
 
 ::
 
@@ -2685,144 +2432,6 @@ treatment of annotations with ``.``.
    PAIR %@ %@
    :: @p.x 'a : @p.y 'b : 'S   ->  @p (pair ('a %x) ('b %y)) : 'S
    :: @p.x 'a : @q.y 'b : 'S   ->  (pair ('a %x) ('b %y)) : 'S
-
-Entrypoints
------------
-
-The specification up to this point has been mostly ignoring existence
-of entrypoints: a mechanism of contract level polymorphism. This
-mechanism is optional, non intrusive, and transparent to smart
-contracts that don't use them. This section is to be read as a patch
-over the rest of the specification, introducing rules that apply only
-in presence of contracts that make use of entrypoints.
-
-Defining and calling entrypoints
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Entrypoints piggyback on the constructor annotations. A contract with
-entrypoints is basically a contract that takes a disjunctive type (a
-nesting of ``or`` types) as the root of its input parameter, decorated
-with constructor annotations. An extra check is performed on these
-constructor annotations: a contract cannot define two entrypoints with
-the same name.
-
-An external transaction can include an entrypoint name alongside the
-parameter value. In that case, if there is a constructor annotation
-with this name at any position in the nesting of ``or`` types, the
-value is automatically wrapped into the according constructors. If the
-transaction specifies an entrypoint, but there is no such constructor
-annotation, the transaction fails.
-
-For instance, suppose the following input type.
-
-``parameter (or (or (nat %A) (bool %B)) (or %maybe_C (unit %Z) (string %C)))``
-
-The input values will be wrapped as in the following examples.
-
-::
-
-   +------------+-----------+---------------------------------+
-   | entrypoint | input     | wrapped input                   |
-   +------------+-----------+---------------------------------+
-   | %A         | 3         | Left (Left 3)                   |
-   | %B         | False     | Left (Right False)              |
-   | %C         | "bob"     | Right (Right "bob")             |
-   | %Z         | Unit      | Right (Left Unit)               |
-   | %maybe_C   | Right "x" | Right (Right "x")               |
-   | %maybe_C   | Left Unit | Right (Left Unit)               |
-   +------------+-----------+---------------------------------+
-   | not given  | value     | value (untouched)               |
-   | %BAD       | _         | failure, contract not called    |
-   +------------+-----------+---------------------------------+
-
-The ``default`` entrypoint
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-A special semantics is assigned to the ``default`` entrypoint. If the
-contract does not explicitly declare a ``default`` entrypoint, then it
-is automatically assigned to the root of the parameter
-type. Conversely, if the contract is called without specifying an
-entrypoint, then it is assumed to be called with the ``default``
-entrypoint. This behaviour makes the entrypoint system completely
-transparent to contracts that do not use it.
-
-This is the case for the previous example, for instance. If a value is
-passed to such a contract specifying entrypoint ``default``, then the
-value is fed to the contract untouched, exactly as if no entrypoint
-was given.
-
-A non enforced convention is to make the entrypoint ``default`` of
-type unit, and to implement the crediting operation (just receive the
-transferred tokens).
-
-A consequence of this semantics is that if the contract uses the
-entrypoint system and defines a ``default`` entrypoint somewhere else
-than at the root of the parameter type, then it must provide an
-entrypoint for all the paths in the toplevel disjunction. Otherwise,
-some parts of the contracts would be dead code.
-
-Another consequence of setting the entrypoint somewhere else than at
-the root is that it makes it impossible to send the raw values of the
-full parameter type to a contract. A trivial solution for that is to
-name the root of the type. The conventional name for that is ``root``.
-
-Let us recapitulate this by tweaking the names of the previous example.
-
-``parameter %root (or (or (nat %A) (bool %B)) (or (unit %default) string))``
-
-The input values will be wrapped as in the following examples.
-
-::
-
-   +------------+---------------------+-----------------------+
-   | entrypoint | input               | wrapped input         |
-   +------------+---------------------+-----------------------+
-   | %A         | 3                   | Left (Left 3)         |
-   | %B         | False               | Left (Right False)    |
-   | %default   | Unit                | Right (Left Unit)     |
-   | %root      | Right (Right "bob") | Right (Right "bob")   |
-   +------------+---------------------+-----------------------+
-   | not given  | Unit                | Right Unit            |
-   | %BAD       | _                   | failure, contract not |
-   +------------+---------------------+-----------------------+
-
-Calling entrypoints from Michelson
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Michelson code can also produce transactions to a specific entrypoint.
-
-For this, both types ``address`` and ``contract`` have the ability to
-denote not just an address, but a pair of an address and an
-entrypoint. The concrete notation is ``"address%entrypoint"``.
-Note that ``"address"`` is strictly equivalent to ``"address%default"``,
-and for clarity, the second variant is forbidden in the concrete syntax.
-
-When the ``TRANSFER_TOKENS`` instruction is called, it places the
-entrypoint provided in the contract handle in the transaction.
-
-The ``CONTRACT t`` instruction has a variant ``CONTRACT %entrypoint
-t``, that works as follows. Note that ``CONTRACT t`` is strictly
-equivalent to ``CONTRACT %default t``, and for clarity, the second
-variant is forbidden in the concrete syntax.
-
-::
-
-   +---------------+---------------------+------------------------------------------+
-   | input address | instruction         | output contract                          |
-   +---------------+---------------------+------------------------------------------+
-   | "addr"        | CONTRACT t          | (Some "addr") if contract exists, has a  |
-   |               |                     | default entrypoint of type t, or has no  |
-   |               |                     | default entrypoint and parameter type t  |
-   +---------------+---------------------+------------------------------------------+
-   | "addr%name"   | CONTRACT t          | (Some "addr%name") if addr exists and    |
-   +---------------+---------------------+ has an entrypoint %name of type t        |
-   | "addr"        | CONTRACT %name t    |                                          |
-   +---------------+---------------------+------------------------------------------+
-   | "addr%_"      | CONTRACT %_ t       | None                                     |
-   +---------------+---------------------+------------------------------------------+
-
-Implicit accounts are considered to have a single ``default``
-entrypoint of type ``Unit``.
 
 JSON syntax
 -----------
@@ -2883,23 +2492,6 @@ The simplest contract is the contract for which the ``parameter`` and
     parameter unit;
 
 
-Example contract with entrypoints
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The following contract maintains a number in its storage. It has two
-entrypoints ``add`` and ``sub`` to modify it, and the default
-entrypoint, of type ``unit`` will reset it to ``0``.
-
-::
-
-   { parameter (or (or (nat %add) (nat %sub)) (unit %default)) ;
-     storage int ;
-     code { AMOUNT ; PUSH mutez 0 ; ASSERT_CMPEQ ; UNPAIR ;
-            IF_LEFT
-              { IF_LEFT { ADD } { SWAP ; SUB } }
-              { DROP ; DROP ; PUSH int 0 } ;
-            NIL operation ; PAIR } }
-
 Multisig contract
 ~~~~~~~~~~~~~~~~~
 
@@ -2948,7 +2540,7 @@ using the Coq proof assistant.
            UNPAIR ;
            # pair the payload with the current contract address, to ensure signatures
            # can't be replayed accross different contracts if a key is reused.
-           DUP ; SELF ; ADDRESS ; CHAIN_ID ; PAIR ; PAIR ;
+           DUP ; SELF ; ADDRESS ; PAIR ;
            PACK ; # form the binary payload that we expect to be signed
            DIP { UNPAIR @counter ; DIP { SWAP } } ; SWAP
          } ;
@@ -3018,8 +2610,14 @@ Full grammar
 
     <data> ::=
       | <int constant>
+      | <natural number constant>
       | <string constant>
-      | <byte sequence constant>
+      | <timestamp string constant>
+      | <signature string constant>
+      | <key string constant>
+      | <key_hash string constant>
+      | <mutez string constant>
+      | <contract string constant>
       | Unit
       | True
       | False
@@ -3031,31 +2629,11 @@ Full grammar
       | { <data> ; ... }
       | { Elt <data> <data> ; ... }
       | instruction
-    <natural number constant> ::=
-      | [0-9]+
-    <int constant> ::=
-      | <natural number constant>
-      | -<natural number constant>
-    <string constant> ::=
-      | "<string content>*"
-    <string content> ::=
-      | \"
-      | \r
-      | \n
-      | \t
-      | \b
-      | \\
-      | [^"\]
-    <byte sequence constant> ::=
-      | 0x[0-9a-fA-F]+
     <instruction> ::=
       | { <instruction> ... }
       | DROP
-      | DROP <natural number constant>
       | DUP
       | SWAP
-      | DIG <natural number constant>
-      | DUG <natural number constant>
       | PUSH <type> <data>
       | SOME
       | NONE <type>
@@ -3067,13 +2645,13 @@ Full grammar
       | LEFT <type>
       | RIGHT <type>
       | IF_LEFT { <instruction> ... } { <instruction> ... }
+      | IF_RIGHT { <instruction> ... } { <instruction> ... }
       | NIL <type>
       | CONS
       | IF_CONS { <instruction> ... } { <instruction> ... }
       | SIZE
       | EMPTY_SET <comparable type>
       | EMPTY_MAP <comparable type> <type>
-      | EMPTY_BIG_MAP <comparable type> <type>
       | MAP { <instruction> ... }
       | ITER { <instruction> ... }
       | MEM
@@ -3085,21 +2663,18 @@ Full grammar
       | LAMBDA <type> <type> { <instruction> ... }
       | EXEC
       | DIP { <instruction> ... }
-      | DIP <natural number constant> { <instruction> ... }
-      | FAILWITH
+      | FAILWITH <data>
       | CAST
       | RENAME
       | CONCAT
       | SLICE
       | PACK
-      | UNPACK <type>
+      | UNPACK
       | ADD
       | SUB
       | MUL
       | EDIV
       | ABS
-      | ISNAT
-      | INT
       | NEG
       | LSL
       | LSR
@@ -3133,7 +2708,6 @@ Full grammar
       | SOURCE
       | SENDER
       | ADDRESS
-      | CHAIN_ID
     <type> ::=
       | <comparable type>
       | key
@@ -3149,11 +2723,7 @@ Full grammar
       | lambda <type> <type>
       | map <comparable type> <type>
       | big_map <comparable type> <type>
-      | chain_id
     <comparable type> ::=
-      | <simple comparable type>
-      | pair <simple comparable type> <comparable type>
-    <simple comparable type> ::=
       | int
       | nat
       | string
@@ -3164,7 +2734,6 @@ Full grammar
       | timestamp
       | address
 
-
 Reference implementation
 ------------------------
 
@@ -3174,9 +2743,9 @@ The language is implemented in OCaml as follows:
    parameters encode exactly the typing rules given in this
    specification. In other words, if a program written in this
    representation is accepted by OCaml's typechecker, it is guaranteed
-   type-safe. This is of course also valid for programs not
-   handwritten but generated by OCaml code, so we are sure that any
-   manipulated code is type-safe.
+   type-safe. This of course also valid for programs not handwritten but
+   generated by OCaml code, so we are sure that any manipulated code is
+   type-safe.
 
    In the end, what remains to be checked is the encoding of the typing
    rules as OCaml types, which boils down to half a line of code for
@@ -3190,11 +2759,11 @@ The language is implemented in OCaml as follows:
    each instruction.
 
    The only things that remain to be reviewed are value dependent
-   choices, such as we did not swap true and false when
-   interpreting the IF instruction.
+   choices, such as that we did not swap true and false when
+   interpreting the If instruction.
 
--  The input, untyped internal representation is an OCaml ADT with
-   only 5 grammar constructions: ``String``, ``Int``, ``Bytes``, ``Seq`` and
+-  The input, untyped internal representation is an OCaml ADT with the
+   only 5 grammar constructions: ``String``, ``Int``, ``Seq`` and
    ``Prim``. It is the target language for the parser, since not all
    parsable programs are well typed, and thus could simply not be
    constructed using the GADT.

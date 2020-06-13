@@ -1,6 +1,6 @@
 (executable
  (name ezResto_test)
- (flags (:standard ))
+ (flags (:standard -safe-string))
  (libraries ocplib-ezresto-directory lwt.unix))
 
 (alias

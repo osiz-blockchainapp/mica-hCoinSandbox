@@ -24,21 +24,14 @@ The Community
 
  - Several community built block explorers are available:
 
-    - https://tzstats.com/
+    - http://tzscan.io ([source code](https://gitlab.com/tzscan/tzscan))
     - https://tezos.id
-    - https://tezblock.io/
-    - https://teztracker.everstake.one/
-    - https://tzkt.io/ (Baking focused Explorer)
-    - https://mininax.cryptonomic.tech/mainnet
-    - https://baking-bad.org/ (Reward Tracker)
-    - https://arronax-beta.cryptonomic.tech/ (Blockchain Search Engine)
-
 
 - A few community run websites collect useful Tezos links:
-    - https://www.tezos.help
+
+    - http://www.tezos.help
     - https://tezos.rocks
 
- - There is a Forum with focus on Governance https://forum.tezosagora.org/
  - There is a matrix channel *Tezos* that you can join [here](https://riot.im/app/#/room/#tezos:matrix.org)
  - There is a sub-reddit at https://www.reddit.com/r/tezos/
  - There is also a community FAQ at https://github.com/tezoscommunity/faq/wiki/Tezos-Technical-FAQ

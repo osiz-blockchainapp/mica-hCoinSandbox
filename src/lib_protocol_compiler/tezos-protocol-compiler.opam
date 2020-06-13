@@ -17,7 +17,6 @@ depends: [
   "tezos-protocol-environment-sigs"
   "tezos-stdlib-unix"
   "ocp-ocamlres" { >= "0.4" }
-  "re"
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]

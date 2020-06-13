@@ -117,6 +117,7 @@ class Sandbox:
                  config_client: bool = True,
                  use_tls: Tuple[str, str] = None,
                  snapshot: str = None,
+                 reconstruct: bool = False,
                  branch: str = "") -> None:
         """ Launches new node with given node_id and initializes client
 
@@ -180,7 +181,12 @@ class Sandbox:
             node.init_config()
         else:
             assert os.path.isfile(snapshot)
-            node.snapshot_import(snapshot)
+            sandboxed_import = [f'--sandbox', self.sandbox_file]
+            if reconstruct:
+                node.snapshot_import(snapshot, ['--reconstruct']
+                                     + sandboxed_import)
+            else:
+                node.snapshot_import(snapshot, sandboxed_import)
             node.init_id()
             node.init_config()
         node.run()
@@ -287,20 +293,20 @@ class Sandbox:
         """Kill baker for given node_id and proto"""
         baker = self.bakers[proto][node_id]
         del self.bakers[proto][node_id]
-        baker.terminate_or_kill()
+        baker.kill()
 
     def rm_endorser(self, node_id: int, proto: str) -> None:
         """Kill endorser for given node_id and proto"""
         endorser = self.bakers[proto][node_id]
         del self.endorsers[proto][node_id]
-        endorser.terminate_or_kill()
+        endorser.kill()
 
     def rm_node(self, node_id: int) -> None:
         """Kill node for given node_id"""
         node = self.nodes[node_id]
         del self.nodes[node_id]
         del self.clients[node_id]
-        node.terminate_or_kill()
+        node.kill()
         node.cleanup()
 
     def client(self, node_id: int) -> Client:
@@ -330,14 +336,14 @@ class Sandbox:
     def cleanup(self):
         """Kill all deamons and cleanup temp dirs."""
         for node in self.nodes.values():
-            node.terminate_or_kill()
+            node.kill()
             node.cleanup()
         for proto in self.bakers:
             for baker in self.bakers[proto].values():
-                baker.terminate_or_kill()
+                baker.kill()
         for proto in self.endorsers:
             for endorser in self.endorsers[proto].values():
-                endorser.terminate_or_kill()
+                endorser.kill()
         for client in self.clients.values():
             client.cleanup()
         shutil.rmtree(self.sandbox_dir)
@@ -436,6 +442,7 @@ class SandboxMultiBranch(Sandbox):
                  config_client: bool = True,
                  use_tls: Tuple[str, str] = None,
                  snapshot: str = None,
+                 reconstruct: bool = False,
                  branch: str = "") -> None:
         assert not branch
         branch = self._branch_map[node_id]

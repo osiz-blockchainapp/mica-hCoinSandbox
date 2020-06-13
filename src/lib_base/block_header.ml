@@ -160,13 +160,19 @@ let hash block = Block_hash.hash_bytes [to_bytes block]
 let hash_raw bytes = Block_hash.hash_bytes [bytes]
 
 let forced_protocol_upgrades : (Int32.t * Protocol_hash.t) list =
-  [ (* nothing *) ]
+  [ ( 28082l,
+      Protocol_hash.of_b58check_exn
+        "PsYLVpVvgbLhAhoqAkMFUo6gudkJ9weNXhUYCiLDzcUpFpkk8Wt" );
+    ( 204761l,
+      Protocol_hash.of_b58check_exn
+        "PsddFKi32cMJ2qPjf43Qv5GDWLDPZb3T3bF6fLKiF5HtvHNU7aP" ) ]
 
 let voted_protocol_overrides : (Protocol_hash.t * Protocol_hash.t) list =
   List.map
     (fun (a, b) ->
       (Protocol_hash.of_b58check_exn a, Protocol_hash.of_b58check_exn b))
-    [ (* nothing *) ]
+    [ ( "PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU",
+        "PsBabyM1eUXZseaJdmXFApDSBqj8YBfwELoxZHHW77EMcAbbwAS" ) ]
 
 module LevelMap = Map.Make (struct
   type t = Int32.t

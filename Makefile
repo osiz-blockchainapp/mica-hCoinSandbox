@@ -29,21 +29,21 @@ endif
 		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_endorser/main_endorser_$(p).exe) \
 		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_accuser/main_accuser_$(p).exe) \
 		$(foreach p, $(active_protocol_directories), src/proto_$(p)/lib_parameters/sandbox-parameters.json)
-	@cp _build/default/src/bin_node/main.exe tezos-node
-	@cp _build/default/src/bin_validation/main_validator.exe tezos-validator
-	@cp _build/default/src/bin_client/main_client.exe tezos-client
-	@cp _build/default/src/bin_client/main_admin.exe tezos-admin-client
-	@cp _build/default/src/bin_signer/main_signer.exe tezos-signer
-	@cp _build/default/src/bin_codec/codec.exe tezos-codec
-	@cp _build/default/src/lib_protocol_compiler/main_native.exe tezos-protocol-compiler
+	@cp _build/default/src/bin_node/main.exe micash-node
+	@cp _build/default/src/bin_validation/main_validator.exe micash-validator
+	@cp _build/default/src/bin_client/main_client.exe micash-client
+	@cp _build/default/src/bin_client/main_admin.exe micash-admin-client
+	@cp _build/default/src/bin_signer/main_signer.exe micash-signer
+	@cp _build/default/src/bin_codec/codec.exe micash-codec
+	@cp _build/default/src/lib_protocol_compiler/main_native.exe micash-protocol-compiler
 	@for p in $(active_protocol_directories) ; do \
-	   cp _build/default/src/proto_$$p/bin_baker/main_baker_$$p.exe tezos-baker-`echo $$p | tr -- _ -` ; \
-	   cp _build/default/src/proto_$$p/bin_endorser/main_endorser_$$p.exe tezos-endorser-`echo $$p | tr -- _ -` ; \
-	   cp _build/default/src/proto_$$p/bin_accuser/main_accuser_$$p.exe tezos-accuser-`echo $$p | tr -- _ -` ; \
+	   cp _build/default/src/proto_$$p/bin_baker/main_baker_$$p.exe micash-baker-`echo $$p | tr -- _ -` ; \
+	   cp _build/default/src/proto_$$p/bin_endorser/main_endorser_$$p.exe micash-endorser-`echo $$p | tr -- _ -` ; \
+	   cp _build/default/src/proto_$$p/bin_accuser/main_accuser_$$p.exe micash-accuser-`echo $$p | tr -- _ -` ; \
 	   cp _build/default/src/proto_$$p/lib_parameters/sandbox-parameters.json sandbox-parameters.json ; \
 	 done
 
-PROTOCOLS := genesis 005_PsBabyM1 006_PsCARTHA demo_noops
+PROTOCOLS := 000_Ps9mPmXa 001_PtCJ7pwo 002_PsYLVpVv 003_PsddFKi3 004_Pt24m4xi 005_PsBabyM1 006_PsCARTHA demo_noops
 DUNE_INCS=$(patsubst %,src/proto_%/lib_protocol/dune.inc, ${PROTOCOLS})
 
 generate_dune: ${DUNE_INCS}
@@ -89,7 +89,6 @@ build-sandbox:
 	@cp _build/default/src/bin_sandbox/main.exe tezos-sandbox
 
 build-test: build-sandbox
-	@dune build @check # here we build all the files required for merlin
 	@dune build @buildtest
 
 test:
@@ -99,7 +98,6 @@ test:
 test-lint:
 	@dune build @runtest_lint
 	make -C tests_python lint_all
-	@src/tooling/lint.sh check_scripts
 
 fmt:
 	@src/tooling/lint.sh format

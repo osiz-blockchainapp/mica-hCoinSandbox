@@ -186,7 +186,7 @@ let main {compile_ml; pack_objects; link_shared} =
     | Ok (hash, proto) ->
         (hash, proto)
     | Error err ->
-        Format.eprintf "Failed to read TEZOS_PROTOCOL: %a" pp_print_error err ;
+        Format.eprintf "Failed to read micash_PROTOCOL: %a" pp_print_error err ;
         exit 2
   in
   let real_hash = Protocol.hash protocol in
@@ -200,7 +200,7 @@ let main {compile_ml; pack_objects; link_shared} =
     | Some hash
       when !check_protocol_hash && not (Protocol_hash.equal real_hash hash) ->
         Format.eprintf
-          "Inconsistent hash for protocol in TEZOS_PROTOCOL.@\n\
+          "Inconsistent hash for protocol in micash_PROTOCOL.@\n\
            Found: %a@\n\
            Expected: %a@."
           Protocol_hash.pp

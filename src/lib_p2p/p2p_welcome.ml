@@ -27,20 +27,17 @@ include Internal_event.Legacy_logging.Make (struct
   let name = "p2p.welcome"
 end)
 
-type connect_handler =
-  | Connect_handler :
-      ('msg, 'meta, 'meta_conn) P2p_connect_handler.t
-      -> connect_handler
+type pool = Pool : ('msg, 'meta, 'meta_conn) P2p_pool.t -> pool
 
 type t = {
   socket : Lwt_unix.file_descr;
   canceler : Lwt_canceler.t;
-  connect_handler : connect_handler;
+  pool : pool;
   mutable worker : unit Lwt.t;
 }
 
 let rec worker_loop st =
-  let (Connect_handler pool) = st.connect_handler in
+  let (Pool pool) = st.pool in
   Lwt_unix.yield ()
   >>= fun () ->
   protect ~canceler:st.canceler (fun () -> P2p_fd.accept st.socket >>= return)
@@ -53,7 +50,7 @@ let rec worker_loop st =
         | Lwt_unix.ADDR_INET (addr, port) ->
             (Ipaddr_unix.V6.of_inet_addr_exn addr, port)
       in
-      P2p_connect_handler.accept pool fd point ;
+      P2p_pool.accept pool fd point ;
       worker_loop st
   (* Unix errors related to the failure to create one connection,
      No reason to abort just now, but we want to stress out that we
@@ -127,7 +124,7 @@ let create_listening_socket ~backlog ?(addr = Ipaddr.V6.unspecified) port =
   Lwt_unix.listen main_socket backlog ;
   Lwt.return main_socket
 
-let create ?addr ~backlog connect_handler port =
+let create ?addr ~backlog pool port =
   Lwt.catch
     (fun () ->
       create_listening_socket ~backlog ?addr port
@@ -136,12 +133,7 @@ let create ?addr ~backlog connect_handler port =
       Lwt_canceler.on_cancel canceler (fun () ->
           Lwt_utils_unix.safe_close socket) ;
       let st =
-        {
-          socket;
-          canceler;
-          connect_handler = Connect_handler connect_handler;
-          worker = Lwt.return_unit;
-        }
+        {socket; canceler; pool = Pool pool; worker = Lwt.return_unit}
       in
       Lwt.return st)
     (fun exn ->

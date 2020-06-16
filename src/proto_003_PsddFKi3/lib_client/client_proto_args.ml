@@ -51,7 +51,7 @@ let () =
           None)
     (fun (parameter, literal) -> Bad_tez_arg (parameter, literal))
 
-let tez_sym = "\xEA\x9C\xA9"
+let tez_sym = "Mi"
 
 let int_parameter =
   parameter (fun _ p ->

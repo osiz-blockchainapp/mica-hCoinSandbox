@@ -361,9 +361,9 @@ module Prefix = struct
   (* 20 *)
   let ed25519_public_key_hash = "\002\164\060" (* tz1(36) *)
 
-  let secp256k1_public_key_hash = "\006\161\161" (* tz2(36) *)
+  let secp256k1_public_key_hash = "\002\164\062" (* tz2(36) *)
 
-  let p256_public_key_hash = "\006\161\164" (* tz3(36) *)
+  let p256_public_key_hash = "\002\164\065" (* tz3(36) *)
 
   (* 16 *)
   let cryptobox_public_key_hash = "\153\103" (* id(30) *)

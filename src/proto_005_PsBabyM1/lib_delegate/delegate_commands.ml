@@ -247,7 +247,7 @@ let baker_commands () =
       ( prefixes ["run"; "with"; "local"; "node"]
       @@ param
            ~name:"context_path"
-           ~desc:"Path to the node data directory (e.g. $HOME/.tezos-node)"
+           ~desc:"Path to the node data directory (e.g. $HOME/.micash-node)"
            directory_parameter
       @@ seq_of_param Client_keys.Public_key_hash.alias_param )
       (fun ( pidfile,

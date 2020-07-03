@@ -935,14 +935,14 @@ let cmd ~pp_error () =
          `P "There are two main test behaviors:";
          `P
            "* $(b,SIMPLE:) The simple one does as much as possible with any \
-            dummy protocol candidates and a Tezos code-base which doesn't \
+            dummy protocol candidates and a micash code-base which doesn't \
             handle them: it tests all the voting periods until baking the \
             last block of the currently understood protocol.";
          `Noblank;
          `P
            "To allow the test to succeed in this case, the option \
             `--winning-client-is-clueless` is required; it is meant to signal \
-            that the “winner” `tezos-client` executable (from the \
+            that the “winner” `micash-client` executable (from the \
             `--winner-client-binary` option) is expected to not understand \
             the winning protocol.";
          `Noblank;

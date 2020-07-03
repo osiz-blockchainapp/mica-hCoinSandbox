@@ -106,7 +106,7 @@ let () =
 
 let home = try Sys.getenv "HOME" with Not_found -> "/root"
 
-let default_base_dir = Filename.concat home ".tezos-client"
+let default_base_dir = Filename.concat home ".micash-client"
 
 let default_chain = `Main
 

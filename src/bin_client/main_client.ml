@@ -104,7 +104,7 @@ let check_network ctxt =
       else if has_prefix "TEZOS_ALPHANET" then (
         alphanet () ;
         Lwt.return_some `Alphanet )
-      else if has_prefix "TEZOS_BETANET" || has_prefix "TEZOS_MAINNET" then (
+      else if has_prefix "TEZOS_BETANET" || has_prefix "Micash_MAINNET" then (
         mainnet () ;
         Lwt.return_some `Mainnet )
       else Lwt.return_none

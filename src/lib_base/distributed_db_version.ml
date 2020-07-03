@@ -37,11 +37,11 @@ let name_encoding =
     ~description:"A name for the distributed DB protocol"
     string
 
-let chain_name = "TEZOS_MAINNET"
+let chain_name = "Micash_MAINNET"
 
 let incompatible_chain_name = "INCOMPATIBLE"
 
-let sandboxed_chain_name = "SANDBOXED_TEZOS_MAINNET"
+let sandboxed_chain_name = "SANDBOXED_Micash_MAINNET"
 
 type t = int
 

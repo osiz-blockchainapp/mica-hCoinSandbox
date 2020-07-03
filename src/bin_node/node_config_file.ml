@@ -30,7 +30,7 @@ let ( // ) = Filename.concat
 
 let home = try Sys.getenv "HOME" with Not_found -> "/root"
 
-let default_data_dir = home // ".tezos-node"
+let default_data_dir = home // ".micash-node"
 
 let default_rpc_port = 8732
 

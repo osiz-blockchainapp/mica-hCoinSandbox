@@ -27,7 +27,7 @@ let commands = Commands.commands ()
 
 let home = try Sys.getenv "HOME" with Not_found -> "/tmp"
 
-let default_base_dir = Filename.concat home ".tezos-client"
+let default_base_dir = Filename.concat home ".micash-client"
 
 let base_dir_arg =
   let open Clic in

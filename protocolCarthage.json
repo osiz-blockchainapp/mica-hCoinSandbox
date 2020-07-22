@@ -2,21 +2,22 @@
   "bootstrap_accounts": [
     [
       "edpkuef96dTK1u97MRG6b4D6n1TSYd2aecgzF9DkNePMuADa4DFcnq",
-      "156550000000000"
-    ]
+      "52183334000000"      
+    ],
+    ["edpkuTcZvBkVpaZuN3p9D7pLAqx44k7D4gW3xooj9RcXryndsddSD5","104366666000000"]
   ],
-  "preserved_cycles": 2,
-  "blocks_per_cycle": 8,
-  "blocks_per_commitment": 4,
-  "blocks_per_roll_snapshot": 4,
+  "preserved_cycles": 5,
+  "blocks_per_cycle": 4096,
+  "blocks_per_commitment": 32,
+  "blocks_per_roll_snapshot": 256,
   "blocks_per_voting_period": 64,
   "time_between_blocks": [
     "60",
-    "75"
+    "40"
   ],
   "endorsers_per_block": 10,
   "hard_gas_limit_per_operation": "800000",
-  "hard_gas_limit_per_block": "8000000",
+  "hard_gas_limit_per_block": "10400000",
   "proof_of_work_threshold": "-1",
   "tokens_per_roll": "8000000000",
   "michelson_maximum_type_size": 1000,
@@ -32,6 +33,6 @@
   "quorum_max": 7000,
   "min_proposal_quorum": 500,
   "initial_endorsers": 1,
-  "delay_per_missing_endorsement": "1",
+  "delay_per_missing_endorsement": "8",
   "baking_reward_per_endorsement": [ "2000000" ]
 }

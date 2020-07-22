@@ -1,3 +1,12 @@
+premine=156550000000000
+
+bootsrap acc
+
+	./micash-client import secret key alice "unencrypted:edsk2puZGc5ZJVeCAJxG3jT57qrpwxGnz1DfmnuDSrGidgEnYuKCEB"
+  	./micash-client import secret key  baker1 "unencrypted:edsk3tTqSJwdLTv9394YfQCa6fWwumKksJU8aLnuDjnMaEAdGw93zg"
+
+
+
 For example 
 
 dicatator Key
@@ -6,14 +15,14 @@ alice
 
 bob
 
+./micash-client import secret key dictator "unencrypted:edsk2iVA5n61RdNGSSmLYmgVJaSgYG5b7mBgmpVN9EDHXZgF1sUMFV"
 
-[ 
-  { "name": "dictator",
-    "value":
-      "unencrypted:edsk2iVA5n61RdNGSSmLYmgVJaSgYG5b7mBgmpVN9EDHXZgF1sUMFV" },
-  { "name": "alice",
-    "value":
-      "unencrypted:edsk2puZGc5ZJVeCAJxG3jT57qrpwxGnz1DfmnuDSrGidgEnYuKCEB" },
-  { "name": "bob",
-    "value":
-      "unencrypted:edsk38zPE7tv23v2P8dq1inkrPMM4BE4VyhKwnaxNEhFkKW864x9Zy" } ]
+	./micash-client import secret key alice "unencrypted:edsk2puZGc5ZJVeCAJxG3jT57qrpwxGnz1DfmnuDSrGidgEnYuKCEB"
+
+	./micash-client import secret key  baker1 "unencrypted:edsk3tTqSJwdLTv9394YfQCa6fWwumKksJU8aLnuDjnMaEAdGw93zg"
+
+	./micash-client import secret key baker2  "unencrypted:edsk3zbxqMQNEJashKUyy5BBKsPzSmjLRrFdf2uG8WGXkRrbdt8hiF"
+
+	./micash-client import secret key baker3 "unencrypted:edsk4JhFEVri9Vnd6Yq5ZkvwYjCJrDcCXySrkqZqUjcrQDFg8GymUH"
+
+	./micash-client import secret key baker4 "unencrypted:edsk3RX2qda452C2WaVnTCeeZrMokpggVdhcRGGkRSkKQFRWEyUKgp"

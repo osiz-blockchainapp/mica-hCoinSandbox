@@ -16,7 +16,7 @@
     "40"
   ],
   "endorsers_per_block": 10,
-  "hard_gas_limit_per_operation": "800000",
+  "hard_gas_limit_per_operation": "1040000",
   "hard_gas_limit_per_block": "10400000",
   "proof_of_work_threshold": "-1",
   "tokens_per_roll": "8000000000",

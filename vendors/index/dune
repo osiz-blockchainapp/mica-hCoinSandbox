@@ -1,3 +1,0 @@
-(executable
-  (name fix)
-  (libraries digestif.c index.unix irmin))
